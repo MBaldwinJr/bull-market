@@ -1,3 +1,23 @@
+-- Persist the first paper operation on the account row. The marker is written in
+-- the same transaction as the first order/position and serializes opening-balance
+-- edits against the first trade.
+ALTER TABLE public.paper_accounts
+  ADD COLUMN IF NOT EXISTS first_trade_at timestamptz;
+
+UPDATE public.paper_accounts AS a
+   SET first_trade_at = activity.first_activity_at
+  FROM (
+    SELECT account_id, min(activity_at) AS first_activity_at
+      FROM (
+        SELECT account_id, created_at AS activity_at FROM public.paper_orders
+        UNION ALL
+        SELECT account_id, created_at AS activity_at FROM public.paper_positions
+      ) AS all_activity
+     GROUP BY account_id
+  ) AS activity
+ WHERE a.id = activity.account_id
+   AND a.first_trade_at IS NULL;
+
 -- Paper account integrity: the authenticated user may set the opening balance
 -- only before the first simulated order/position. The trading engine (service_role)
 -- remains the only writer for operational balances, trades, and audit events.
@@ -47,6 +67,12 @@ BEGIN
     RAISE EXCEPTION 'Paper trade account does not belong to the supplied owner';
   END IF;
 
+  -- Persist the marker while holding the account row lock. A failed order or
+  -- position insert rolls this update back in the same transaction.
+  UPDATE public.paper_accounts
+     SET first_trade_at = COALESCE(first_trade_at, now())
+   WHERE id = NEW.account_id;
+
   RETURN NEW;
 END;
 $$;
@@ -72,7 +98,7 @@ AS $$
 BEGIN
   IF auth.role() = 'authenticated'
      AND NEW.initial_balance IS DISTINCT FROM OLD.initial_balance THEN
-    IF EXISTS (
+    IF OLD.first_trade_at IS NOT NULL OR EXISTS (
       SELECT 1 FROM public.paper_orders
       WHERE account_id = OLD.id AND owner_id = OLD.owner_id
     ) OR EXISTS (
@@ -97,7 +123,8 @@ BEFORE UPDATE ON public.paper_accounts
 FOR EACH ROW EXECUTE FUNCTION public.guard_paper_account_initial_balance();
 
 -- Replace broad table privileges with column-scoped opening-balance permissions.
-REVOKE INSERT, UPDATE ON public.paper_accounts FROM PUBLIC, anon, authenticated;
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.paper_accounts FROM PUBLIC, anon, authenticated;
+GRANT SELECT ON public.paper_accounts TO authenticated;
 GRANT INSERT (owner_id, quote_currency) ON public.paper_accounts TO authenticated;
 GRANT UPDATE (initial_balance) ON public.paper_accounts TO authenticated;
 
@@ -115,8 +142,19 @@ WITH CHECK (
   AND NOT public.paper_account_has_activity(id)
 );
 
+-- Orders and positions are engine-owned. Authenticated clients may read only.
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.paper_orders, public.paper_positions
+FROM PUBLIC, anon, authenticated;
+GRANT SELECT ON public.paper_orders, public.paper_positions TO authenticated;
+
 -- Audit and risk-event rows are engine-owned append-only records.
-REVOKE INSERT ON public.audit_logs FROM PUBLIC, anon, authenticated;
-REVOKE INSERT ON public.risk_events FROM PUBLIC, anon, authenticated;
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.audit_logs, public.risk_events
+FROM PUBLIC, anon, authenticated;
+GRANT SELECT ON public.audit_logs, public.risk_events TO authenticated;
 DROP POLICY IF EXISTS "own audit insert" ON public.audit_logs;
 DROP POLICY IF EXISTS "own risk events insert" ON public.risk_events;
+
+-- Portfolio snapshots are also written by the engine, not by authenticated clients.
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.portfolio_snapshots
+FROM PUBLIC, anon, authenticated;
+GRANT SELECT ON public.portfolio_snapshots TO authenticated;
