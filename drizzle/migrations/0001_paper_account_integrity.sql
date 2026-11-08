@@ -97,7 +97,7 @@ BEFORE UPDATE ON public.paper_accounts
 FOR EACH ROW EXECUTE FUNCTION public.guard_paper_account_initial_balance();
 
 -- Replace broad table privileges with column-scoped opening-balance permissions.
-REVOKE INSERT, UPDATE ON public.paper_accounts FROM authenticated;
+REVOKE INSERT, UPDATE ON public.paper_accounts FROM PUBLIC, anon, authenticated;
 GRANT INSERT (owner_id, quote_currency) ON public.paper_accounts TO authenticated;
 GRANT UPDATE (initial_balance) ON public.paper_accounts TO authenticated;
 
@@ -116,7 +116,7 @@ WITH CHECK (
 );
 
 -- Audit and risk-event rows are engine-owned append-only records.
-REVOKE INSERT ON public.audit_logs FROM authenticated;
-REVOKE INSERT ON public.risk_events FROM authenticated;
+REVOKE INSERT ON public.audit_logs FROM PUBLIC, anon, authenticated;
+REVOKE INSERT ON public.risk_events FROM PUBLIC, anon, authenticated;
 DROP POLICY IF EXISTS "own audit insert" ON public.audit_logs;
 DROP POLICY IF EXISTS "own risk events insert" ON public.risk_events;
