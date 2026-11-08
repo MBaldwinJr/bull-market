@@ -12,7 +12,10 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedAtivosRouteImport } from './routes/_authenticated/ativos'
+import { Route as AuthenticatedEstrategiasRouteImport } from './routes/_authenticated/estrategias'
 import { Route as AuthenticatedMercadoRouteImport } from './routes/_authenticated/mercado'
+import { Route as AuthenticatedSinaisRouteImport } from './routes/_authenticated/sinais'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -28,35 +31,68 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedAtivosRoute = AuthenticatedAtivosRouteImport.update({
+  id: '/ativos',
+  path: '/ativos',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedEstrategiasRoute =
+  AuthenticatedEstrategiasRouteImport.update({
+    id: '/estrategias',
+    path: '/estrategias',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedMercadoRoute = AuthenticatedMercadoRouteImport.update({
   id: '/mercado',
   path: '/mercado',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedSinaisRoute = AuthenticatedSinaisRouteImport.update({
+  id: '/sinais',
+  path: '/sinais',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/ativos': typeof AuthenticatedAtivosRoute
+  '/estrategias': typeof AuthenticatedEstrategiasRoute
   '/mercado': typeof AuthenticatedMercadoRoute
+  '/sinais': typeof AuthenticatedSinaisRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/ativos': typeof AuthenticatedAtivosRoute
+  '/estrategias': typeof AuthenticatedEstrategiasRoute
   '/mercado': typeof AuthenticatedMercadoRoute
+  '/sinais': typeof AuthenticatedSinaisRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authenticated/ativos': typeof AuthenticatedAtivosRoute
+  '/_authenticated/estrategias': typeof AuthenticatedEstrategiasRoute
   '/_authenticated/mercado': typeof AuthenticatedMercadoRoute
+  '/_authenticated/sinais': typeof AuthenticatedSinaisRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/mercado'
+  fullPaths: '/' | '/auth' | '/ativos' | '/estrategias' | '/mercado' | '/sinais'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/mercado'
-  id: '__root__' | '/' | '/_authenticated' | '/auth' | '/_authenticated/mercado'
+  to: '/' | '/auth' | '/ativos' | '/estrategias' | '/mercado' | '/sinais'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authenticated'
+    | '/auth'
+    | '/_authenticated/ativos'
+    | '/_authenticated/estrategias'
+    | '/_authenticated/mercado'
+    | '/_authenticated/sinais'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -88,6 +124,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/ativos': {
+      id: '/_authenticated/ativos'
+      path: '/ativos'
+      fullPath: '/ativos'
+      preLoaderRoute: typeof AuthenticatedAtivosRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/estrategias': {
+      id: '/_authenticated/estrategias'
+      path: '/estrategias'
+      fullPath: '/estrategias'
+      preLoaderRoute: typeof AuthenticatedEstrategiasRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/mercado': {
       id: '/_authenticated/mercado'
       path: '/mercado'
@@ -95,15 +145,28 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMercadoRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/sinais': {
+      id: '/_authenticated/sinais'
+      path: '/sinais'
+      fullPath: '/sinais'
+      preLoaderRoute: typeof AuthenticatedSinaisRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
   }
 }
 
 interface AuthenticatedRouteChildren {
+  AuthenticatedAtivosRoute: typeof AuthenticatedAtivosRoute
+  AuthenticatedEstrategiasRoute: typeof AuthenticatedEstrategiasRoute
   AuthenticatedMercadoRoute: typeof AuthenticatedMercadoRoute
+  AuthenticatedSinaisRoute: typeof AuthenticatedSinaisRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
+  AuthenticatedAtivosRoute: AuthenticatedAtivosRoute,
+  AuthenticatedEstrategiasRoute: AuthenticatedEstrategiasRoute,
   AuthenticatedMercadoRoute: AuthenticatedMercadoRoute,
+  AuthenticatedSinaisRoute: AuthenticatedSinaisRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
