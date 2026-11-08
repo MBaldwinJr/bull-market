@@ -72,7 +72,13 @@ AS $$
 BEGIN
   IF auth.role() = 'authenticated'
      AND NEW.initial_balance IS DISTINCT FROM OLD.initial_balance THEN
-    IF public.paper_account_has_activity(OLD.id) THEN
+    IF EXISTS (
+      SELECT 1 FROM public.paper_orders
+      WHERE account_id = OLD.id AND owner_id = OLD.owner_id
+    ) OR EXISTS (
+      SELECT 1 FROM public.paper_positions
+      WHERE account_id = OLD.id AND owner_id = OLD.owner_id
+    ) THEN
       RAISE EXCEPTION 'Opening balance cannot be changed after the first paper trade';
     END IF;
 
