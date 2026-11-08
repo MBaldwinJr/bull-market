@@ -35,6 +35,12 @@ export function DashboardPage() {
 
   const error = account.error ?? positions.error ?? orders.error ?? snapshots.error;
   const ccy = account.data?.quote_currency ?? "USDT";
+  const openingBalanceMismatch = Boolean(
+    account.data && orders.data && positions.data &&
+    toNumber(account.data.initial_balance) > 0 &&
+    orders.data.length === 0 && positions.data.length === 0 &&
+    toNumber(account.data.cash_balance) !== toNumber(account.data.initial_balance),
+  );
 
   return (
     <>
@@ -55,6 +61,13 @@ export function DashboardPage() {
               Saldo virtual ainda não definido. Configure o capital simulado em Configurações.
             </div>
           )}
+          {openingBalanceMismatch && (
+            <div role="alert" className="mb-4 rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+              Inconsistência na conta simulada: o capital inicial não corresponde ao saldo disponível.
+              Os indicadores de rentabilidade estão indisponíveis até a correção do banco.
+              Não execute operações enquanto essa divergência persistir.
+            </div>
+          )}
           <div className="mb-4 flex items-center gap-2">
             <SimulationBadge />
             <span className="text-xs text-muted-foreground">Posições abertas avaliadas ao preço de entrada.</span>
@@ -64,7 +77,7 @@ export function DashboardPage() {
             <TradingMetricCard label="Saldo disponível" value={formatMoney(metrics.cash, ccy)} />
             <TradingMetricCard label="Resultado diário" value={formatMoney(metrics.dailyPnl, ccy)} tone={toneFor(metrics.dailyPnl)} />
             <TradingMetricCard label="Resultado acumulado" value={formatMoney(metrics.totalPnl, ccy)} tone={toneFor(metrics.totalPnl)} hint={`Taxas: ${formatMoney(metrics.fees, ccy)}`} />
-            <TradingMetricCard label="Rentabilidade" value={formatPct(metrics.returnPct)} tone={toneFor(metrics.returnPct)} />
+            <TradingMetricCard label="Rentabilidade" value={openingBalanceMismatch ? "—" : formatPct(metrics.returnPct)} tone={openingBalanceMismatch ? "neutral" : toneFor(metrics.returnPct)} />
             <TradingMetricCard label="Operações abertas" value={metrics.openPositions} />
             <TradingMetricCard label="Total de ordens" value={metrics.totalTrades} />
             <TradingMetricCard label="Taxa de acerto" value={metrics.winRate === null ? "—" : formatPct(metrics.winRate, 1).replace("+", "")} />
