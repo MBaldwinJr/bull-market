@@ -17,9 +17,12 @@ import { Route as AuthenticatedBacktestingRouteImport } from './routes/_authenti
 import { Route as AuthenticatedBotRouteImport } from './routes/_authenticated/bot'
 import { Route as AuthenticatedEstrategiasRouteImport } from './routes/_authenticated/estrategias'
 import { Route as AuthenticatedHistoricoRouteImport } from './routes/_authenticated/historico'
+import { Route as AuthenticatedIaRouteImport } from './routes/_authenticated/ia'
 import { Route as AuthenticatedMercadoRouteImport } from './routes/_authenticated/mercado'
 import { Route as AuthenticatedPaperRouteImport } from './routes/_authenticated/paper'
 import { Route as AuthenticatedPortfolioRouteImport } from './routes/_authenticated/portfolio'
+import { Route as AuthenticatedRelatoriosRouteImport } from './routes/_authenticated/relatorios'
+import { Route as AuthenticatedRiscoRouteImport } from './routes/_authenticated/risco'
 import { Route as AuthenticatedSinaisRouteImport } from './routes/_authenticated/sinais'
 
 const IndexRoute = IndexRouteImport.update({
@@ -63,6 +66,11 @@ const AuthenticatedHistoricoRoute = AuthenticatedHistoricoRouteImport.update({
   path: '/historico',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedIaRoute = AuthenticatedIaRouteImport.update({
+  id: '/ia',
+  path: '/ia',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedMercadoRoute = AuthenticatedMercadoRouteImport.update({
   id: '/mercado',
   path: '/mercado',
@@ -76,6 +84,16 @@ const AuthenticatedPaperRoute = AuthenticatedPaperRouteImport.update({
 const AuthenticatedPortfolioRoute = AuthenticatedPortfolioRouteImport.update({
   id: '/portfolio',
   path: '/portfolio',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedRelatoriosRoute = AuthenticatedRelatoriosRouteImport.update({
+  id: '/relatorios',
+  path: '/relatorios',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedRiscoRoute = AuthenticatedRiscoRouteImport.update({
+  id: '/risco',
+  path: '/risco',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedSinaisRoute = AuthenticatedSinaisRouteImport.update({
@@ -92,9 +110,12 @@ export interface FileRoutesByFullPath {
   '/bot': typeof AuthenticatedBotRoute
   '/estrategias': typeof AuthenticatedEstrategiasRoute
   '/historico': typeof AuthenticatedHistoricoRoute
+  '/ia': typeof AuthenticatedIaRoute
   '/mercado': typeof AuthenticatedMercadoRoute
   '/paper': typeof AuthenticatedPaperRoute
   '/portfolio': typeof AuthenticatedPortfolioRoute
+  '/relatorios': typeof AuthenticatedRelatoriosRoute
+  '/risco': typeof AuthenticatedRiscoRoute
   '/sinais': typeof AuthenticatedSinaisRoute
 }
 export interface FileRoutesByTo {
@@ -105,9 +126,12 @@ export interface FileRoutesByTo {
   '/bot': typeof AuthenticatedBotRoute
   '/estrategias': typeof AuthenticatedEstrategiasRoute
   '/historico': typeof AuthenticatedHistoricoRoute
+  '/ia': typeof AuthenticatedIaRoute
   '/mercado': typeof AuthenticatedMercadoRoute
   '/paper': typeof AuthenticatedPaperRoute
   '/portfolio': typeof AuthenticatedPortfolioRoute
+  '/relatorios': typeof AuthenticatedRelatoriosRoute
+  '/risco': typeof AuthenticatedRiscoRoute
   '/sinais': typeof AuthenticatedSinaisRoute
 }
 export interface FileRoutesById {
@@ -120,9 +144,12 @@ export interface FileRoutesById {
   '/_authenticated/bot': typeof AuthenticatedBotRoute
   '/_authenticated/estrategias': typeof AuthenticatedEstrategiasRoute
   '/_authenticated/historico': typeof AuthenticatedHistoricoRoute
+  '/_authenticated/ia': typeof AuthenticatedIaRoute
   '/_authenticated/mercado': typeof AuthenticatedMercadoRoute
   '/_authenticated/paper': typeof AuthenticatedPaperRoute
   '/_authenticated/portfolio': typeof AuthenticatedPortfolioRoute
+  '/_authenticated/relatorios': typeof AuthenticatedRelatoriosRoute
+  '/_authenticated/risco': typeof AuthenticatedRiscoRoute
   '/_authenticated/sinais': typeof AuthenticatedSinaisRoute
 }
 export interface FileRouteTypes {
@@ -135,9 +162,12 @@ export interface FileRouteTypes {
     | '/bot'
     | '/estrategias'
     | '/historico'
+    | '/ia'
     | '/mercado'
     | '/paper'
     | '/portfolio'
+    | '/relatorios'
+    | '/risco'
     | '/sinais'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -148,9 +178,12 @@ export interface FileRouteTypes {
     | '/bot'
     | '/estrategias'
     | '/historico'
+    | '/ia'
     | '/mercado'
     | '/paper'
     | '/portfolio'
+    | '/relatorios'
+    | '/risco'
     | '/sinais'
   id:
     | '__root__'
@@ -162,9 +195,12 @@ export interface FileRouteTypes {
     | '/_authenticated/bot'
     | '/_authenticated/estrategias'
     | '/_authenticated/historico'
+    | '/_authenticated/ia'
     | '/_authenticated/mercado'
     | '/_authenticated/paper'
     | '/_authenticated/portfolio'
+    | '/_authenticated/relatorios'
+    | '/_authenticated/risco'
     | '/_authenticated/sinais'
   fileRoutesById: FileRoutesById
 }
@@ -232,6 +268,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedHistoricoRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/ia': {
+      id: '/_authenticated/ia'
+      path: '/ia'
+      fullPath: '/ia'
+      preLoaderRoute: typeof AuthenticatedIaRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/mercado': {
       id: '/_authenticated/mercado'
       path: '/mercado'
@@ -253,6 +296,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPortfolioRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/relatorios': {
+      id: '/_authenticated/relatorios'
+      path: '/relatorios'
+      fullPath: '/relatorios'
+      preLoaderRoute: typeof AuthenticatedRelatoriosRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/risco': {
+      id: '/_authenticated/risco'
+      path: '/risco'
+      fullPath: '/risco'
+      preLoaderRoute: typeof AuthenticatedRiscoRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/sinais': {
       id: '/_authenticated/sinais'
       path: '/sinais'
@@ -269,9 +326,12 @@ interface AuthenticatedRouteChildren {
   AuthenticatedBotRoute: typeof AuthenticatedBotRoute
   AuthenticatedEstrategiasRoute: typeof AuthenticatedEstrategiasRoute
   AuthenticatedHistoricoRoute: typeof AuthenticatedHistoricoRoute
+  AuthenticatedIaRoute: typeof AuthenticatedIaRoute
   AuthenticatedMercadoRoute: typeof AuthenticatedMercadoRoute
   AuthenticatedPaperRoute: typeof AuthenticatedPaperRoute
   AuthenticatedPortfolioRoute: typeof AuthenticatedPortfolioRoute
+  AuthenticatedRelatoriosRoute: typeof AuthenticatedRelatoriosRoute
+  AuthenticatedRiscoRoute: typeof AuthenticatedRiscoRoute
   AuthenticatedSinaisRoute: typeof AuthenticatedSinaisRoute
 }
 
@@ -281,9 +341,12 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedBotRoute: AuthenticatedBotRoute,
   AuthenticatedEstrategiasRoute: AuthenticatedEstrategiasRoute,
   AuthenticatedHistoricoRoute: AuthenticatedHistoricoRoute,
+  AuthenticatedIaRoute: AuthenticatedIaRoute,
   AuthenticatedMercadoRoute: AuthenticatedMercadoRoute,
   AuthenticatedPaperRoute: AuthenticatedPaperRoute,
   AuthenticatedPortfolioRoute: AuthenticatedPortfolioRoute,
+  AuthenticatedRelatoriosRoute: AuthenticatedRelatoriosRoute,
+  AuthenticatedRiscoRoute: AuthenticatedRiscoRoute,
   AuthenticatedSinaisRoute: AuthenticatedSinaisRoute,
 }
 
