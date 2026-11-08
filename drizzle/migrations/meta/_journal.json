@@ -8,6 +8,13 @@
       "when": 1794144621110,
       "tag": "0000_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1794144621111,
+      "tag": "0001_paper_account_integrity",
+      "breakpoints": true
     }
   ]
 }
