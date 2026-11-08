@@ -40,16 +40,16 @@ BEGIN
    WHERE owner_id = p_owner_id AND status = 'active' FOR UPDATE;
   SELECT * INTO STRICT v_bot FROM public.bot_config WHERE owner_id = p_owner_id;
   SELECT * INTO STRICT v_limits FROM public.risk_limits WHERE owner_id = p_owner_id;
-  IF v_bot.trading_mode <> 'paper' OR v_bot.live_trading_enabled OR v_bot.allow_withdrawals
-     OR v_bot.status <> 'running' OR v_limits.leverage <> 0
-     OR v_limits.max_risk_per_trade_pct NOT BETWEEN 0.001 AND 2
-     OR v_limits.max_daily_loss_pct NOT BETWEEN 0.001 AND 5
-     OR v_limits.max_open_positions < 1
+  IF v_bot.trading_mode IS DISTINCT FROM 'paper' OR v_bot.live_trading_enabled IS DISTINCT FROM false OR v_bot.allow_withdrawals IS DISTINCT FROM false
+     OR v_bot.status IS DISTINCT FROM 'running' OR v_limits.leverage IS DISTINCT FROM 0
+     OR (v_limits.max_risk_per_trade_pct BETWEEN 0.001 AND 2) IS DISTINCT FROM true
+     OR (v_limits.max_daily_loss_pct BETWEEN 0.001 AND 5) IS DISTINCT FROM true
+     OR (v_limits.max_open_positions >= 1) IS DISTINCT FROM true
   THEN RAISE EXCEPTION 'Paper execution disabled by safety settings'; END IF;
   IF NOT EXISTS (SELECT 1 FROM public.assets WHERE owner_id=p_owner_id
-     AND symbol=p_symbol AND auto_trade_enabled AND deleted_at IS NULL AND status='active')
+     AND symbol=p_symbol AND auto_trade_enabled IS TRUE AND deleted_at IS NULL AND status='active')
      OR NOT EXISTS (SELECT 1 FROM public.trading_strategies WHERE owner_id=p_owner_id
-     AND strategy_key=p_strategy_key AND enabled)
+     AND strategy_key=p_strategy_key AND enabled IS TRUE)
   THEN RAISE EXCEPTION 'Asset or strategy not enabled'; END IF;
 
   -- Idempotency is checked under the serialized account lock.
@@ -65,7 +65,9 @@ BEGIN
   THEN RAISE EXCEPTION 'Daily loss limit reached'; END IF;
   v_notional := p_quantity*p_entry_price;
   v_fee := v_notional*p_fee_rate;
-  IF v_notional + v_fee > v_account.cash_balance
+  IF v_account.cash_balance IS NULL OR v_account.initial_balance IS NULL
+     OR v_account.cash_balance <= 0 OR v_account.initial_balance <= 0
+     OR v_notional + v_fee > v_account.cash_balance
      OR p_quantity*(p_entry_price-p_stop_loss) > v_account.initial_balance*v_limits.max_risk_per_trade_pct/100
   THEN RAISE EXCEPTION 'Insufficient cash or risk limit exceeded'; END IF;
 
