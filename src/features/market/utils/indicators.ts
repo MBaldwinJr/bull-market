@@ -19,7 +19,7 @@ export function ema(values: readonly number[], period: number): number[] {
   const seed = values.slice(0, period).reduce((a, b) => a + b, 0) / period;
   const out: number[] = [seed];
   for (let i = period; i < values.length; i++) {
-    out.push(values[i] * k + out[out.length - 1] * (1 - k));
+    out.push((values[i] ?? 0) * k + (out[out.length - 1] ?? 0) * (1 - k));
   }
   return out;
 }
@@ -30,14 +30,14 @@ export function rsi(values: readonly number[], period = 14): number | null {
   let gain = 0;
   let loss = 0;
   for (let i = 1; i <= period; i++) {
-    const d = values[i] - values[i - 1];
+    const d = (values[i] ?? 0) - (values[i - 1] ?? 0);
     if (d >= 0) gain += d;
     else loss -= d;
   }
   let avgGain = gain / period;
   let avgLoss = loss / period;
   for (let i = period + 1; i < values.length; i++) {
-    const d = values[i] - values[i - 1];
+    const d = (values[i] ?? 0) - (values[i - 1] ?? 0);
     avgGain = (avgGain * (period - 1) + Math.max(d, 0)) / period;
     avgLoss = (avgLoss * (period - 1) + Math.max(-d, 0)) / period;
   }
@@ -49,12 +49,12 @@ export function atr(candles: readonly Candle[], period = 14): number | null {
   if (candles.length <= period) return null;
   const trs: number[] = [];
   for (let i = 1; i < candles.length; i++) {
-    const c = candles[i];
-    const prev = candles[i - 1].close;
+    const c = candles[i]!;
+    const prev = candles[i - 1]!.close;
     trs.push(Math.max(c.high - c.low, Math.abs(c.high - prev), Math.abs(c.low - prev)));
   }
   let value = trs.slice(0, period).reduce((a, b) => a + b, 0) / period;
-  for (let i = period; i < trs.length; i++) value = (value * (period - 1) + trs[i]) / period;
+  for (let i = period; i < trs.length; i++) value = (value * (period - 1) + (trs[i] ?? 0)) / period;
   return value;
 }
 
@@ -83,7 +83,7 @@ export interface IndicatorSnapshot {
   readonly candlesUsed: number;
 }
 
-const last = (arr: readonly number[]): number | null => (arr.length ? arr[arr.length - 1] : null);
+const last = (arr: readonly number[]): number | null => (arr.length ? (arr[arr.length - 1] ?? null) : null);
 
 /**
  * Reproducible 0–100 score (trend 30, momentum 25, volume/VWAP 20, volatility 15, confirmation 10).

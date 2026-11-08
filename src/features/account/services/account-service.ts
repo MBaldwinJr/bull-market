@@ -14,10 +14,10 @@ export type RiskEvent = Tables["risk_events"]["Row"];
 export type AuditLog = Tables["audit_logs"]["Row"];
 export type Strategy = Tables["trading_strategies"]["Row"];
 
-function unwrap<T>(res: { data: T | null; error: { message: string } | null }): NonNullable<T> {
+function unwrap<T>(res: { data: unknown; error: { message: string } | null }): T {
   if (res.error) throw new Error(res.error.message);
   if (res.data === null || res.data === undefined) throw new Error("Registro não encontrado");
-  return res.data as NonNullable<T>;
+  return res.data as T;
 }
 
 async function currentUserId(): Promise<string> {
@@ -32,22 +32,22 @@ export async function audit(action: string, entity: string, details: Record<stri
 }
 
 export const accountService = {
-  getBotConfig: async () => unwrap(await supabase.from("bot_config").select("*").maybeSingle()),
-  getRiskLimits: async () => unwrap(await supabase.from("risk_limits").select("*").maybeSingle()),
-  getPaperAccount: async () => unwrap(await supabase.from("paper_accounts").select("*").maybeSingle()),
-  listAssets: async () =>
-    unwrap(await supabase.from("assets").select("*").is("deleted_at", null).order("created_at")),
-  listPositions: async () =>
-    unwrap(await supabase.from("paper_positions").select("*").order("opened_at", { ascending: false }).limit(500)),
-  listOrders: async () =>
-    unwrap(await supabase.from("paper_orders").select("*").order("created_at", { ascending: false }).limit(500)),
-  listSnapshots: async () =>
-    unwrap(await supabase.from("portfolio_snapshots").select("*").order("captured_at").limit(1000)),
-  listRiskEvents: async () =>
-    unwrap(await supabase.from("risk_events").select("*").order("created_at", { ascending: false }).limit(200)),
-  listAuditLogs: async () =>
-    unwrap(await supabase.from("audit_logs").select("*").order("created_at", { ascending: false }).limit(200)),
-  listStrategies: async () => unwrap(await supabase.from("trading_strategies").select("*").order("name")),
+  getBotConfig: async (): Promise<BotConfig> => unwrap<BotConfig>(await supabase.from("bot_config").select("*").maybeSingle()),
+  getRiskLimits: async (): Promise<RiskLimits> => unwrap<RiskLimits>(await supabase.from("risk_limits").select("*").maybeSingle()),
+  getPaperAccount: async (): Promise<PaperAccount> => unwrap<PaperAccount>(await supabase.from("paper_accounts").select("*").maybeSingle()),
+  listAssets: async (): Promise<Asset[]> =>
+    unwrap<Asset[]>(await supabase.from("assets").select("*").is("deleted_at", null).order("created_at")),
+  listPositions: async (): Promise<PaperPosition[]> =>
+    unwrap<PaperPosition[]>(await supabase.from("paper_positions").select("*").order("opened_at", { ascending: false }).limit(500)),
+  listOrders: async (): Promise<PaperOrder[]> =>
+    unwrap<PaperOrder[]>(await supabase.from("paper_orders").select("*").order("created_at", { ascending: false }).limit(500)),
+  listSnapshots: async (): Promise<Snapshot[]> =>
+    unwrap<Snapshot[]>(await supabase.from("portfolio_snapshots").select("*").order("captured_at").limit(1000)),
+  listRiskEvents: async (): Promise<RiskEvent[]> =>
+    unwrap<RiskEvent[]>(await supabase.from("risk_events").select("*").order("created_at", { ascending: false }).limit(200)),
+  listAuditLogs: async (): Promise<AuditLog[]> =>
+    unwrap<AuditLog[]>(await supabase.from("audit_logs").select("*").order("created_at", { ascending: false }).limit(200)),
+  listStrategies: async (): Promise<Strategy[]> => unwrap<Strategy[]>(await supabase.from("trading_strategies").select("*").order("name")),
 
   updateRiskLimits: async (id: string, input: RiskLimitsInput) => {
     unwrap(await supabase.from("risk_limits").update(input).eq("id", id).select().single());
