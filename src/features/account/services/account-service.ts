@@ -56,7 +56,7 @@ export const accountService = {
   // The database trigger mirrors the opening balance into cash_balance before
   // the first simulated trade. The client must never write operational cash.
   setPaperBalance: async (account: PaperAccount, initial: number) => {
-    unwrap(
+    const updated = unwrap<PaperAccount>(
       await supabase
         .from("paper_accounts")
         .update({ initial_balance: initial })
@@ -64,6 +64,21 @@ export const accountService = {
         .select()
         .single(),
     );
+    // The opening-balance trigger must mirror the new amount into operational
+    // cash before the first trade. A successful UPDATE alone is not sufficient.
+    if (Number(updated.initial_balance) !== initial) {
+      throw new Error("O saldo inicial não foi confirmado pelo banco. Verifique a conta antes de operar.");
+    }
+    const { count, error: ordersError } = await supabase
+      .from("paper_orders")
+      .select("id", { count: "exact", head: true })
+      .eq("account_id", account.id);
+    if (ordersError) throw new Error("Não foi possível verificar as operações da conta: " + ordersError.message);
+    if (count === 0 && Number(updated.cash_balance) !== initial) {
+      throw new Error(
+        "Saldo inicial registrado, mas saldo disponível não atualizado. A integridade do banco precisa ser corrigida antes de operar.",
+      );
+    }
   },
 
   addAsset: async (symbol: string, base: string, quote: string) => {
