@@ -41,5 +41,9 @@ jobs:
       - name: Build application
         run: bun run build
 
-      - name: Run lint
+      - name: Run ESLint
         run: bun run lint
+
+      - name: Check formatting (tracked as non-blocking debt)
+        run: bun run format:check
+        continue-on-error: true
