@@ -11,8 +11,10 @@ export function MarketTicker() {
 
   return (
     <div className="mb-4 flex gap-2 overflow-x-auto rounded-md border bg-secondary p-2" aria-live="polite">
-      {tickers.error ? (
-        <span className="text-xs text-loss">Cotações indisponíveis — novas entradas devem ser bloqueadas.</span>
+      {symbols.length === 0 ? (
+        <span className="text-xs text-muted-foreground">Nenhum ativo monitorado. Adicione ativos em Configurações.</span>
+      ) : tickers.error ? (
+        <span className="text-xs text-loss">Cotações indisponíveis — verifique a conexão com a Binance. Novas entradas devem permanecer bloqueadas.</span>
       ) : !tickers.data ? (
         <span className="text-xs text-muted-foreground">Carregando cotações…</span>
       ) : (
