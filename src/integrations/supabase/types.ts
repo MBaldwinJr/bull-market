@@ -135,6 +135,7 @@ export type Database = {
         Row: {
           cash_balance: number
           created_at: string
+          first_trade_at: string | null
           id: string
           initial_balance: number
           owner_id: string
@@ -146,6 +147,7 @@ export type Database = {
         Insert: {
           cash_balance?: number
           created_at?: string
+          first_trade_at?: string | null
           id?: string
           initial_balance?: number
           owner_id: string
@@ -157,6 +159,7 @@ export type Database = {
         Update: {
           cash_balance?: number
           created_at?: string
+          first_trade_at?: string | null
           id?: string
           initial_balance?: number
           owner_id?: string
@@ -513,7 +516,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      paper_account_has_activity: {
+        Args: { p_account_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
