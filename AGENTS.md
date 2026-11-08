@@ -35,3 +35,4 @@ use the editor.
 - Market data comes only from Binance public endpoints via server functions in `src/features/market/services`; no exchange keys ever reach the browser.
 - Paper orders/positions/snapshots are read-only for users (RLS); only the external FastAPI engine (service role) writes them — see `docs/backend-fastapi.md`.
 - Modules waiting on the FastAPI engine render `ModulePending` instead of fake data.
+- `vite.config.ts` carries a fallback for the public backend URL/publishable key because `.env` is git-ignored and publish builds can't read it; only public values belong there.
