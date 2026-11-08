@@ -83,7 +83,7 @@ export interface IndicatorSnapshot {
   readonly candlesUsed: number;
 }
 
-const last = (arr: readonly number[]): number | null => (arr.length ? arr[arr.length - 1] : null);
+const last = (arr: readonly number[]): number | null => (arr.length ? (arr[arr.length - 1] ?? null) : null);
 
 /**
  * Reproducible 0–100 score (trend 30, momentum 25, volume/VWAP 20, volatility 15, confirmation 10).
