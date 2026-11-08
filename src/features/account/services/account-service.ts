@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import type { Database, Json } from "@/integrations/supabase/types";
+import type { Database } from "@/integrations/supabase/types";
 import type { RiskLimitsInput } from "../schemas";
 
 type Tables = Database["public"]["Tables"];
@@ -26,11 +26,6 @@ async function currentUserId(): Promise<string> {
   return data.user.id;
 }
 
-export async function audit(action: string, entity: string, details: Record<string, Json> = {}): Promise<void> {
-  const owner_id = await currentUserId();
-  await supabase.from("audit_logs").insert({ owner_id, action, entity, details });
-}
-
 export const accountService = {
   getBotConfig: async (): Promise<BotConfig> => unwrap<BotConfig>(await supabase.from("bot_config").select("*").maybeSingle()),
   getRiskLimits: async (): Promise<RiskLimits> => unwrap<RiskLimits>(await supabase.from("risk_limits").select("*").maybeSingle()),
@@ -47,37 +42,28 @@ export const accountService = {
     unwrap<RiskEvent[]>(await supabase.from("risk_events").select("*").order("created_at", { ascending: false }).limit(200)),
   listAuditLogs: async (): Promise<AuditLog[]> =>
     unwrap<AuditLog[]>(await supabase.from("audit_logs").select("*").order("created_at", { ascending: false }).limit(200)),
-  listStrategies: async (): Promise<Strategy[]> => unwrap<Strategy[]>(await supabase.from("trading_strategies").select("*").order("name")),
+  listStrategies: async (): Promise<Strategy[]> =>
+    unwrap<Strategy[]>(await supabase.from("trading_strategies").select("*").order("name")),
 
   updateRiskLimits: async (id: string, input: RiskLimitsInput) => {
     unwrap(await supabase.from("risk_limits").update(input).eq("id", id).select().single());
-    await audit("risk.update", "risk_limits", { ...input });
   },
 
   setBotStatus: async (id: string, status: BotConfig["status"]) => {
     unwrap(await supabase.from("bot_config").update({ status }).eq("id", id).select().single());
-    await audit(`bot.${status}`, "bot_config");
-    if (status === "emergency_stopped") {
-      const owner_id = await currentUserId();
-      await supabase.from("risk_events").insert({
-        owner_id,
-        event_type: "emergency_stop",
-        severity: "critical",
-        message: "Parada de emergência acionada: novas entradas simuladas bloqueadas.",
-      });
-    }
   },
 
+  // The database trigger mirrors the opening balance into cash_balance before
+  // the first simulated trade. The client must never write operational cash.
   setPaperBalance: async (account: PaperAccount, initial: number) => {
     unwrap(
       await supabase
         .from("paper_accounts")
-        .update({ initial_balance: initial, cash_balance: initial })
+        .update({ initial_balance: initial })
         .eq("id", account.id)
         .select()
         .single(),
     );
-    await audit("paper.balance.set", "paper_accounts", { initial_balance: initial });
   },
 
   addAsset: async (symbol: string, base: string, quote: string) => {
@@ -89,18 +75,15 @@ export const accountService = {
         .select()
         .single(),
     );
-    await audit("asset.add", "assets", { symbol });
   },
 
   removeAsset: async (asset: Asset) => {
     unwrap(
       await supabase.from("assets").update({ deleted_at: new Date().toISOString() }).eq("id", asset.id).select().single(),
     );
-    await audit("asset.remove", "assets", { symbol: asset.symbol });
   },
 
   updateStrategy: async (id: string, patch: { enabled?: boolean; weight?: number }) => {
     unwrap(await supabase.from("trading_strategies").update(patch).eq("id", id).select().single());
-    await audit("strategy.update", "trading_strategies", { id, ...patch });
   },
 };
