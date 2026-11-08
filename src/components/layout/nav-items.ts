@@ -5,7 +5,6 @@ import {
   BrainCircuit,
   CandlestickChart,
   Coins,
-  FileText,
   FlaskConical,
   History,
   LayoutDashboard,
@@ -65,5 +64,3 @@ export const NAV_GROUPS: ReadonlyArray<{ title: string; items: readonly NavItem[
     ],
   },
 ];
-
-export const DOCS_ICON = FileText;
