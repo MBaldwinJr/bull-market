@@ -16,5 +16,6 @@ const required = [
 for (const pattern of required) assert.match(sql, pattern, 'Missing safety invariant: ' + pattern);
 assert.equal(journal.entries.filter(e => e.tag === '0001_paper_account_integrity').length, 1, 'Expected exactly one 0001 journal entry');
 assert.doesNotMatch(sql, /\b(?:INSERT|UPDATE|DELETE|TRUNCATE)\s+ON\s+public\.(?:paper_orders|paper_positions|audit_logs|risk_events|portfolio_snapshots)\s+TO\s+authenticated/i);
-assert.doesNotMatch(sql, /REVOKE[^;]*\bMAINTAIN\b/i, 'MAINTAIN requires PostgreSQL 17+');
+const executableSql = sql.replace(/--[^\r\n]*/g, '');
+assert.doesNotMatch(executableSql, /REVOKE[^;]*\bMAINTAIN\b/i, 'MAINTAIN requires PostgreSQL 17+');
 console.log('Static migration checks passed. Database runtime, RLS, concurrency and deployment remain unverified.');
