@@ -32,10 +32,12 @@ function BalanceForm({
   account,
   hasActivity,
   activityLoading,
+  activityCheckFailed,
 }: {
   account: PaperAccount;
   hasActivity: boolean;
   activityLoading: boolean;
+  activityCheckFailed: boolean;
 }) {
   const [value, setValue] = useState(String(toNumber(account.initial_balance)));
   const save = useAccountMutation(
@@ -51,13 +53,28 @@ function BalanceForm({
     }
     save.mutate(parsed.data.initial_balance);
   };
+  const balanceLocked = hasActivity || activityLoading || activityCheckFailed || save.isPending;
+
   return (
     <div className="space-y-3">
       <div className="space-y-1">
         <Label htmlFor="balance">Saldo virtual inicial ({account.quote_currency})</Label>
-        <Input id="balance" type="number" min={0} value={value} onChange={(e) => setValue(e.target.value)} className="max-w-xs" disabled={hasActivity || activityLoading} />
+        <Input
+          id="balance"
+          type="number"
+          min={0}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          className="max-w-xs"
+          disabled={balanceLocked}
+        />
       </div>
       {activityLoading && <p className="text-xs text-muted-foreground">Verificando se a conta já realizou a primeira operação...</p>}
+      {activityCheckFailed && (
+        <p className="text-xs text-destructive">
+          Não foi possível verificar o histórico da conta. Por segurança, a edição do saldo inicial foi bloqueada. Recarregue a página e tente novamente.
+        </p>
+      )}
       {hasActivity && (
         <p className="text-xs text-warning">
           O saldo inicial fica bloqueado após a primeira ordem ou posição simulada. A partir daí, somente o motor de trading pode alterar os saldos operacionais.
@@ -65,7 +82,7 @@ function BalanceForm({
       )}
       <AlertDialog>
         <AlertDialogTrigger asChild>
-          <Button disabled={hasActivity || activityLoading || save.isPending}>Salvar saldo inicial</Button>
+          <Button disabled={balanceLocked}>Salvar saldo inicial</Button>
         </AlertDialogTrigger>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -90,13 +107,21 @@ function SettingsPage() {
   const orders = useOrders();
   const hasActivity = (positions.data?.length ?? 0) > 0 || (orders.data?.length ?? 0) > 0;
   const activityLoading = positions.isLoading || orders.isLoading;
+  const activityCheckFailed = positions.isError || orders.isError;
 
   return (
     <>
       <PageHeader title="Configurações" />
       <Panel title="Paper Trading">
         <QueryView query={account}>
-          {(a) => <BalanceForm account={a} hasActivity={hasActivity} activityLoading={activityLoading} />}
+          {(a) => (
+            <BalanceForm
+              account={a}
+              hasActivity={hasActivity}
+              activityLoading={activityLoading}
+              activityCheckFailed={activityCheckFailed}
+            />
+          )}
         </QueryView>
       </Panel>
     </>
