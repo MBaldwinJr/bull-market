@@ -45,8 +45,8 @@ export const StrategyCard = memo(function StrategyCard({ strategy }: { strategy:
           min={0}
           max={50}
           step={1}
-          onValueChange={([v]) => setWeight(v)}
-          onValueCommit={([v]) => update.mutate({ weight: v })}
+          onValueChange={([v]) => setWeight(v ?? 0)}
+          onValueCommit={([v]) => update.mutate({ weight: v ?? 0 })}
           aria-label={`Peso de ${strategy.name}`}
         />
       </div>

@@ -131,7 +131,7 @@ export const getDollarQuotes = createServerFn({ method: "GET" }).handler(async (
   const [ref, usdt, usdc] = await Promise.all([
     safe(async () => {
       const b = (await getJson("https://open.er-api.com/v6/latest/USD")) as { rates?: Record<string, number> };
-      return b.rates?.BRL ?? null;
+      return b.rates?.["BRL"] ?? null;
     }),
     safe(async () => Number(((await getJson(`${BINANCE_PUBLIC}/ticker/price?symbol=USDTBRL`)) as { price: string }).price)),
     safe(async () => Number(((await getJson(`${BINANCE_PUBLIC}/ticker/price?symbol=USDCUSDT`)) as { price: string }).price)),

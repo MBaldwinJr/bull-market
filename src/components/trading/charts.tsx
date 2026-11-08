@@ -52,7 +52,7 @@ export const PnlBarChart = memo(function PnlBarChart({
         <Tooltip {...TOOLTIP} />
         <Bar dataKey="pnl">
           {data.map((d, i) => (
-            <Cell key={i} fill={Number(d.pnl) >= 0 ? "var(--gain)" : "var(--loss)"} />
+            <Cell key={i} fill={Number(d["pnl"]) >= 0 ? "var(--gain)" : "var(--loss)"} />
           ))}
         </Bar>
       </BarChart>
