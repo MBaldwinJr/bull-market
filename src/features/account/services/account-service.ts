@@ -14,10 +14,10 @@ export type RiskEvent = Tables["risk_events"]["Row"];
 export type AuditLog = Tables["audit_logs"]["Row"];
 export type Strategy = Tables["trading_strategies"]["Row"];
 
-function unwrap<T>(res: { data: T | null; error: { message: string } | null }): T {
+function unwrap<T>(res: { data: T | null; error: { message: string } | null }): NonNullable<T> {
   if (res.error) throw new Error(res.error.message);
-  if (res.data === null) throw new Error("Registro não encontrado");
-  return res.data;
+  if (res.data === null || res.data === undefined) throw new Error("Registro não encontrado");
+  return res.data as NonNullable<T>;
 }
 
 async function currentUserId(): Promise<string> {

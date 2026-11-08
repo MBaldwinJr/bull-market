@@ -92,7 +92,7 @@ const last = (arr: readonly number[]): number | null => (arr.length ? arr[arr.le
 export function computeIndicators(candles: readonly Candle[]): IndicatorSnapshot | null {
   if (candles.length < 30) return null;
   const closes = candles.map((c) => c.close);
-  const lastClose = closes[closes.length - 1];
+  const lastClose = closes[closes.length - 1] ?? 0;
   const e9 = last(ema(closes, 9));
   const e21 = last(ema(closes, 21));
   const e200 = last(ema(closes, 200));
