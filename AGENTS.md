@@ -28,3 +28,10 @@ use the editor.
   own key and store it in Secrets.
 - **Secrets.** Lovable manages them. Do not put secret values in the repo.
 <!-- LOVABLE:END -->
+
+## Project rules
+- Features live in `src/features/<feature>/{components,hooks,services,utils}`; components use hooks, hooks use services — keeps data access out of UI.
+- Live trading is impossible by design: DB CHECK constraints + `src/lib/trading-config.ts`; never add a UI or route that enables production execution.
+- Market data comes only from Binance public endpoints via server functions in `src/features/market/services`; no exchange keys ever reach the browser.
+- Paper orders/positions/snapshots are read-only for users (RLS); only the external FastAPI engine (service role) writes them — see `docs/backend-fastapi.md`.
+- Modules waiting on the FastAPI engine render `ModulePending` instead of fake data.
