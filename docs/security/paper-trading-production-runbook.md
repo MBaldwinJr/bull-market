@@ -40,6 +40,9 @@ separate, explicit approval after reviewing the final SQL and backup evidence.
   `quote_currency` supplied; database defaults establish balances.
 - Authenticated users can update only `initial_balance`, and only before any
   order or position exists for that account.
+- The `first_trade_at` marker is set atomically by the order/position insert trigger
+  while holding the account row lock; the marker and trade roll back together.
+- Existing activity is backfilled into `first_trade_at` during migration.
 - The database trigger synchronizes `cash_balance` with `initial_balance`
   during the allowed opening-balance edit.
 - Orders, positions, audit logs, risk events, and portfolio snapshots are
@@ -64,10 +67,13 @@ two independent database sessions and must be recorded separately.
 7. Authenticated role cannot insert, update, or delete audit and risk events.
 8. Authenticated role cannot write portfolio snapshots.
 9. Authenticated and anon roles cannot TRUNCATE any protected table.
-10. A two-session race between the first trade insert and opening-balance update
-    cannot allow both operations to succeed in an invalid order.
-11. Service-role backend operations continue to work as intended.
-12. Existing application flows for account creation, reading balances, and editing
+10. Confirm the first-trade marker is set by order and position inserts and is
+    rolled back when the insert transaction is rolled back.
+11. A two-session race between the first trade insert and opening-balance update
+    cannot allow an opening-balance change to commit after the first trade.
+12. Verify a pre-existing order/position is backfilled into `first_trade_at`.
+13. Service-role backend operations continue to work as intended.
+14. Existing application flows for account creation, reading balances, and editing
     the opening balance before first activity continue to work.
 
 ## Important review notes
