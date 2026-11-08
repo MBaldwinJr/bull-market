@@ -17,7 +17,7 @@ describe("paper buy execution planner", () => {
     });
   });
   it("rejects purchases whose fees exceed cash", () => {
-    expect(planPaperBuy({ ...input, proposedQuantity: 2 })).toMatchObject({
+    expect(planPaperBuy({ ...input, proposedQuantity: 2, stopPrice: 49.75 })).toMatchObject({
       allowed: false, reason: "Saldo insuficiente para taxa e compra",
     });
   });
