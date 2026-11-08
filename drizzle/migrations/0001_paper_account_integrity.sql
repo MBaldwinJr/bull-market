@@ -1,3 +1,23 @@
+-- Persist the first paper operation on the account row. The marker is written in
+-- the same transaction as the first order/position and serializes opening-balance
+-- edits against the first trade.
+ALTER TABLE public.paper_accounts
+  ADD COLUMN IF NOT EXISTS first_trade_at timestamptz;
+
+UPDATE public.paper_accounts AS a
+   SET first_trade_at = activity.first_activity_at
+  FROM (
+    SELECT account_id, min(activity_at) AS first_activity_at
+      FROM (
+        SELECT account_id, created_at AS activity_at FROM public.paper_orders
+        UNION ALL
+        SELECT account_id, created_at AS activity_at FROM public.paper_positions
+      ) AS all_activity
+     GROUP BY account_id
+  ) AS activity
+ WHERE a.id = activity.account_id
+   AND a.first_trade_at IS NULL;
+
 -- Paper account integrity: the authenticated user may set the opening balance
 -- only before the first simulated order/position. The trading engine (service_role)
 -- remains the only writer for operational balances, trades, and audit events.
@@ -47,6 +67,12 @@ BEGIN
     RAISE EXCEPTION 'Paper trade account does not belong to the supplied owner';
   END IF;
 
+  -- Persist the marker while holding the account row lock. A failed order or
+  -- position insert rolls this update back in the same transaction.
+  UPDATE public.paper_accounts
+     SET first_trade_at = COALESCE(first_trade_at, now())
+   WHERE id = NEW.account_id;
+
   RETURN NEW;
 END;
 $$;
@@ -72,7 +98,7 @@ AS $$
 BEGIN
   IF auth.role() = 'authenticated'
      AND NEW.initial_balance IS DISTINCT FROM OLD.initial_balance THEN
-    IF EXISTS (
+    IF OLD.first_trade_at IS NOT NULL OR EXISTS (
       SELECT 1 FROM public.paper_orders
       WHERE account_id = OLD.id AND owner_id = OLD.owner_id
     ) OR EXISTS (
