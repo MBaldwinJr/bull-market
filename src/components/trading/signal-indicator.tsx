@@ -16,5 +16,10 @@ export const SignalIndicator = memo(function SignalIndicator({ score }: { score:
   return (
     <div className="flex items-center gap-2">
       <Progress value={score} className="h-1.5 w-20" aria-label="Pontuação" />
+      <span className="tabular w-7 text-right text-sm font-semibold">{score}</span>
+      <span className={cn("rounded-sm px-1.5 py-0.5 text-[10px] font-semibold uppercase", BAND_CLASS[band])}>
+        {SCORE_BAND_LABEL[band]}
+      </span>
+    </div>
   );
 });
