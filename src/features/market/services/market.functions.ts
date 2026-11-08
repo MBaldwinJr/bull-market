@@ -31,7 +31,7 @@ interface RawTicker {
 }
 
 async function getJson(url: string): Promise<unknown> {
-  const res = await fetch(url, { headers: { accept: "application/json" } });
+  const res = await fetch(url, { headers: { accept: "application/json" }, signal: AbortSignal.timeout(8000) });
   if (!res.ok) throw new Error(`Binance respondeu ${res.status}`);
   return res.json();
 }
@@ -105,7 +105,7 @@ export interface ExchangeHealth {
 export const getExchangeHealth = createServerFn({ method: "GET" }).handler(async (): Promise<ExchangeHealth> => {
   const start = Date.now();
   try {
-    const res = await fetch(`${BINANCE_PUBLIC}/ping`);
+    const res = await fetch(`${BINANCE_PUBLIC}/ping`, { signal: AbortSignal.timeout(8000) });
     return { binancePublic: res.ok, latencyMs: Date.now() - start, checkedAt: Date.now() };
   } catch {
     return { binancePublic: false, latencyMs: null, checkedAt: Date.now() };
