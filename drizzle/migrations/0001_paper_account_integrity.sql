@@ -123,7 +123,7 @@ BEFORE UPDATE ON public.paper_accounts
 FOR EACH ROW EXECUTE FUNCTION public.guard_paper_account_initial_balance();
 
 -- Replace broad table privileges with column-scoped opening-balance permissions.
-REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.paper_accounts FROM PUBLIC, anon, authenticated;
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER, MAINTAIN ON public.paper_accounts FROM PUBLIC, anon, authenticated;
 GRANT SELECT ON public.paper_accounts TO authenticated;
 GRANT INSERT (owner_id, quote_currency) ON public.paper_accounts TO authenticated;
 GRANT UPDATE (initial_balance) ON public.paper_accounts TO authenticated;
@@ -143,18 +143,18 @@ WITH CHECK (
 );
 
 -- Orders and positions are engine-owned. Authenticated clients may read only.
-REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.paper_orders, public.paper_positions
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER, MAINTAIN ON public.paper_orders, public.paper_positions
 FROM PUBLIC, anon, authenticated;
 GRANT SELECT ON public.paper_orders, public.paper_positions TO authenticated;
 
 -- Audit and risk-event rows are engine-owned append-only records.
-REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.audit_logs, public.risk_events
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER, MAINTAIN ON public.audit_logs, public.risk_events
 FROM PUBLIC, anon, authenticated;
 GRANT SELECT ON public.audit_logs, public.risk_events TO authenticated;
 DROP POLICY IF EXISTS "own audit insert" ON public.audit_logs;
 DROP POLICY IF EXISTS "own risk events insert" ON public.risk_events;
 
 -- Portfolio snapshots are also written by the engine, not by authenticated clients.
-REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.portfolio_snapshots
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER, MAINTAIN ON public.portfolio_snapshots
 FROM PUBLIC, anon, authenticated;
 GRANT SELECT ON public.portfolio_snapshots TO authenticated;
