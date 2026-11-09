@@ -13,7 +13,7 @@ import { useCandles, useTickers } from "@/features/market/hooks/use-market";
 import { pageHead } from "@/lib/seo";
 
 export const Route = createFileRoute("/_authenticated/mercado")({
-  head: () => pageHead("Mercado", "Cotações em tempo real da Binance Spot e módulo de dólar."),
+  head: () => pageHead("Mercado", "Cotações públicas verificadas, com fallback parcial da Kraken."),
   component: MarketPage,
 });
 
@@ -21,6 +21,7 @@ function MarketPage() {
   const assets = useAssets();
   const symbols = useMemo(() => (assets.data ?? []).map((a) => a.symbol), [assets.data]);
   const tickers = useTickers(symbols);
+  const missing = symbols.filter((symbol) => !tickers.data?.some((ticker) => ticker.symbol === symbol));
   const [minVolume, setMinVolume] = useState(0);
   const [maxSpread, setMaxSpread] = useState(1);
   const [selected, setSelected] = useState("BTCUSDT");
@@ -37,7 +38,7 @@ function MarketPage() {
 
   return (
     <>
-      <PageHeader title="Mercado" description="Dados públicos da Binance Spot, atualizados a cada 10 segundos." />
+      <PageHeader title="Mercado" description="Dados públicos da Binance ou Kraken (fallback parcial). Cotações verificadas a cada 10 segundos." />
       <Panel title="Filtros" className="mb-4">
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="space-y-1">
@@ -51,6 +52,9 @@ function MarketPage() {
         </div>
       </Panel>
       <Panel title="Ativos monitorados" className="mb-4">
+        {tickers.data && missing.length > 0 && (
+          <p role="status" className="mb-3 text-xs text-warning">Sem fonte pública validada neste ambiente: {missing.join(", ")}. Esses ativos não são exibidos como negociáveis.</p>
+        )}
         <QueryView query={tickers} isEmpty={() => filtered.length === 0}>
           {() => <AssetTable tickers={filtered} />}
         </QueryView>
@@ -74,6 +78,7 @@ function MarketPage() {
             </Select>
           }
         >
+          {candles.data && <p className="mb-2 text-xs text-muted-foreground">Fonte: {candles.data[0]?.source === "kraken_public" ? "Kraken" : "Binance"} · candles fechados e candle atual em formação.</p>}
           <QueryView query={candles}>{() => <PriceChart data={chartData} />}</QueryView>
         </Panel>
         <DollarPanel />
