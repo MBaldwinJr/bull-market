@@ -12,13 +12,13 @@ BEGIN
    rejected := false;
    BEGIN
      CASE row_count
-       WHEN 1 THEN PERFORM public.execute_paper_buy(owner,'invalid-order-01',NULL,'test_strategy',1,50,49.75,0.001,now());
+       WHEN 1 THEN PERFORM public.execute_paper_buy(owner,'invalid-order-01',NULL,'ema',1,50,49.75,0.001,now());
        WHEN 2 THEN PERFORM public.execute_paper_buy(owner,'invalid-order-02','BTCUSDT',NULL,1,50,49.75,0.001,now());
-       WHEN 3 THEN PERFORM public.execute_paper_buy(owner,'invalid-order-03','BTCUSDT','test_strategy',NULL,50,49.75,0.001,now());
-       WHEN 4 THEN PERFORM public.execute_paper_buy(owner,'invalid-order-04','BTCUSDT','test_strategy',1,NULL,49.75,0.001,now());
-       WHEN 5 THEN PERFORM public.execute_paper_buy(owner,'invalid-order-05','BTCUSDT','test_strategy',1,50,NULL,0.001,now());
-       WHEN 6 THEN PERFORM public.execute_paper_buy(owner,'invalid-order-06','BTCUSDT','test_strategy',1,50,49.75,NULL,now());
-       WHEN 7 THEN PERFORM public.execute_paper_buy(owner,'invalid-order-07','BTCUSDT','test_strategy',1,50,49.75,0.001,NULL);
+       WHEN 3 THEN PERFORM public.execute_paper_buy(owner,'invalid-order-03','BTCUSDT','ema',NULL,50,49.75,0.001,now());
+       WHEN 4 THEN PERFORM public.execute_paper_buy(owner,'invalid-order-04','BTCUSDT','ema',1,NULL,49.75,0.001,now());
+       WHEN 5 THEN PERFORM public.execute_paper_buy(owner,'invalid-order-05','BTCUSDT','ema',1,50,NULL,0.001,now());
+       WHEN 6 THEN PERFORM public.execute_paper_buy(owner,'invalid-order-06','BTCUSDT','ema',1,50,49.75,NULL,now());
+       WHEN 7 THEN PERFORM public.execute_paper_buy(owner,'invalid-order-07','BTCUSDT','ema',1,50,49.75,0.001,NULL);
      END CASE;
    EXCEPTION WHEN OTHERS THEN rejected := true;
    END;

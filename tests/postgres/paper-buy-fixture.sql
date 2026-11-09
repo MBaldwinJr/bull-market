@@ -16,4 +16,4 @@ INSERT INTO public.paper_accounts(owner_id,initial_balance,cash_balance) VALUES 
 INSERT INTO public.bot_config VALUES ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','paper',false,false,'running');
 INSERT INTO public.risk_limits(owner_id,leverage,max_risk_per_trade_pct,max_daily_loss_pct,max_open_positions) VALUES ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',0,0.5,1,2);
 INSERT INTO public.assets VALUES ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','BTCUSDT',true,NULL,'active');
-INSERT INTO public.trading_strategies(owner_id,strategy_key,enabled) VALUES ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','test_strategy',true);
+INSERT INTO public.trading_strategies(owner_id,strategy_key,enabled) VALUES ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','ema',true);

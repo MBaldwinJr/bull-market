@@ -12,14 +12,14 @@ BEGIN
    rejected := false;
    BEGIN
      CASE i
-       WHEN 1 THEN PERFORM public.execute_paper_buy(owner,'numeric-invalid-01','BTCUSDT','test_strategy',0,50,49.75,0.001,now());
-       WHEN 2 THEN PERFORM public.execute_paper_buy(owner,'numeric-invalid-02','BTCUSDT','test_strategy',-1,50,49.75,0.001,now());
-       WHEN 3 THEN PERFORM public.execute_paper_buy(owner,'numeric-invalid-03','BTCUSDT','test_strategy',1,0,0.01,0.001,now());
-       WHEN 4 THEN PERFORM public.execute_paper_buy(owner,'numeric-invalid-04','BTCUSDT','test_strategy',1,-50,1,0.001,now());
-       WHEN 5 THEN PERFORM public.execute_paper_buy(owner,'numeric-invalid-05','BTCUSDT','test_strategy',1,50,0,0.001,now());
-       WHEN 6 THEN PERFORM public.execute_paper_buy(owner,'numeric-invalid-06','BTCUSDT','test_strategy',1,50,50,0.001,now());
-       WHEN 7 THEN PERFORM public.execute_paper_buy(owner,'numeric-invalid-07','BTCUSDT','test_strategy',1,50,51,0.001,now());
-       WHEN 8 THEN PERFORM public.execute_paper_buy(owner,'numeric-invalid-08','BTCUSDT','test_strategy',1,50,49.75,-0.001,now());
+       WHEN 1 THEN PERFORM public.execute_paper_buy(owner,'numeric-invalid-01','BTCUSDT','ema',0,50,49.75,0.001,now());
+       WHEN 2 THEN PERFORM public.execute_paper_buy(owner,'numeric-invalid-02','BTCUSDT','ema',-1,50,49.75,0.001,now());
+       WHEN 3 THEN PERFORM public.execute_paper_buy(owner,'numeric-invalid-03','BTCUSDT','ema',1,0,0.01,0.001,now());
+       WHEN 4 THEN PERFORM public.execute_paper_buy(owner,'numeric-invalid-04','BTCUSDT','ema',1,-50,1,0.001,now());
+       WHEN 5 THEN PERFORM public.execute_paper_buy(owner,'numeric-invalid-05','BTCUSDT','ema',1,50,0,0.001,now());
+       WHEN 6 THEN PERFORM public.execute_paper_buy(owner,'numeric-invalid-06','BTCUSDT','ema',1,50,50,0.001,now());
+       WHEN 7 THEN PERFORM public.execute_paper_buy(owner,'numeric-invalid-07','BTCUSDT','ema',1,50,51,0.001,now());
+       WHEN 8 THEN PERFORM public.execute_paper_buy(owner,'numeric-invalid-08','BTCUSDT','ema',1,50,49.75,-0.001,now());
      END CASE;
    EXCEPTION WHEN OTHERS THEN rejected := true;
    END;

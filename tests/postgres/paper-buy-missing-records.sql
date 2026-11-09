@@ -18,7 +18,7 @@ BEGIN
    END CASE;
    rejected := false;
    BEGIN
-     PERFORM public.execute_paper_buy(owner,'missing-record-0'||i,'BTCUSDT','test_strategy',1,50,49.75,0.001,now());
+     PERFORM public.execute_paper_buy(owner,'missing-record-0'||i,'BTCUSDT','ema',1,50,49.75,0.001,now());
    EXCEPTION WHEN OTHERS THEN rejected := true;
    END;
    IF NOT rejected THEN RAISE EXCEPTION 'Missing mandatory record case % was accepted',i; END IF;
@@ -37,8 +37,8 @@ BEGIN
      SELECT owner,'BTCUSDT',true,NULL,'active'
      WHERE NOT EXISTS(SELECT 1 FROM public.assets WHERE owner_id=owner AND symbol='BTCUSDT');
    INSERT INTO public.trading_strategies(owner_id,strategy_key,enabled,status)
-     SELECT owner,'test_strategy',true,'active'
-     WHERE NOT EXISTS(SELECT 1 FROM public.trading_strategies WHERE owner_id=owner AND strategy_key='test_strategy');
+     SELECT owner,'ema',true,'active'
+     WHERE NOT EXISTS(SELECT 1 FROM public.trading_strategies WHERE owner_id=owner AND strategy_key='ema');
    UPDATE public.paper_accounts SET status='active' WHERE owner_id=owner;
  END LOOP;
 END $$;

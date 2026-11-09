@@ -27,3 +27,8 @@ ALTER TABLE public.paper_orders
   ADD CONSTRAINT paper_orders_side_check CHECK (side IN ('buy','sell')),
   ADD CONSTRAINT paper_orders_order_type_check CHECK (order_type IN ('market','limit')),
   ADD CONSTRAINT paper_orders_status_check CHECK (status IN ('pending','filled','cancelled','rejected'));
+
+-- Match the actual production strategy-key allowlist.
+ALTER TABLE public.trading_strategies
+  ADD CONSTRAINT trading_strategies_strategy_key_check
+  CHECK (strategy_key IN ('trend_following','ema','rsi','macd','vwap','breakout','atr'));
