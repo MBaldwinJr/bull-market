@@ -1,3 +1,5 @@
+import { MIN_PAPER_BUY_NOTIONAL_USDT } from "../utils/paper-order-policy";
+
 /** Read-only indicative calculation. Never authorizes an order.
  * Actual eligibility is decided from a fresh trusted quote in the server
  * and checked again atomically by the paper-trading database function.
@@ -22,7 +24,8 @@ export type IndicativePaperRisk =
       readonly entry: number;
       readonly risk: number;
       readonly riskLimit: number;
-      readonly lowestStop: number;
+      readonly lowestStop: number | null;
+      readonly notional: number;
       readonly estimatedCost: number;
     };
 
@@ -41,15 +44,22 @@ export function estimatePaperRisk(input: IndicativePaperRiskInput): IndicativePa
   }
   const riskLimit = initialBalance * riskPct / 100;
   const risk = quantity * (price - stopPrice);
-  const estimatedCost = quantity * price * (1 + feeRate);
-  const lowestStop = price - riskLimit / quantity;
-  if (![risk, riskLimit, estimatedCost, lowestStop].every(Number.isFinite)) {
+  const notional = quantity * price;
+  const estimatedCost = notional * (1 + feeRate);
+  const rawStopFloor = price - riskLimit / quantity;
+  const lowestStop = rawStopFloor > 0 ? rawStopFloor : null;
+  if (![risk, riskLimit, notional, estimatedCost, rawStopFloor].every(Number.isFinite)) {
     return { status: "unavailable", reason: "Não foi possível calcular o risco." };
   }
-  const common = { entry: price, risk: Math.max(0, risk), riskLimit, lowestStop, estimatedCost };
+  const common = { entry: price, risk: Math.max(0, risk), riskLimit, lowestStop, estimatedCost, notional };
   if (stopPrice <= 0 || stopPrice >= price) return {
     status: "rejected",
     reason: "O stop-loss deve ser um preço positivo em USDT, abaixo do preço de entrada do BTC.",
+    ...common,
+  };
+  if (notional < MIN_PAPER_BUY_NOTIONAL_USDT) return {
+    status: "rejected",
+    reason: `Valor simulado inferior ao mínimo de ${MIN_PAPER_BUY_NOTIONAL_USDT} USDT do Bull Market. Ajuste a quantidade.`,
     ...common,
   };
   if (risk > riskLimit) return {

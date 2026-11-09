@@ -16,6 +16,14 @@ describe("paper buy execution planner", () => {
       stopPrice: 49.5, fee: 0.05, totalDebit: 50.05, cashAfter: 49.95, riskAmount: 0.5,
     });
   });
+  it("rejects dust simulated orders below the internal 5 USDT notional minimum", () => {
+    expect(planPaperBuy({ ...input, proposedQuantity: 0.0000001, stopPrice: 0.0000001 })).toMatchObject({
+      allowed: false, reason: "Valor simulado inferior ao mínimo de 5 USDT",
+    });
+    expect(planPaperBuy({ ...input, entryPrice: 75000, proposedQuantity: 0.0000001, stopPrice: 0.0000001 })).toMatchObject({
+      allowed: false, reason: "Valor simulado inferior ao mínimo de 5 USDT",
+    });
+  });
   it("rejects purchases whose fees exceed cash", () => {
     expect(planPaperBuy({ ...input, proposedQuantity: 2, stopPrice: 49.75 })).toMatchObject({
       allowed: false, reason: "Saldo insuficiente para taxa e compra",

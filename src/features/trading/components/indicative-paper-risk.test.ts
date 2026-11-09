@@ -18,6 +18,22 @@ describe("indicative paper risk, never trade authorization", () => {
     expect(result.lowestStop).toBeCloseTo(74500);
   });
 
+  it("rejects dust sized BTC order and never recommends a negative stop floor", () => {
+    const r = estimatePaperRisk({ ...base, quantity: 0.0000001, stopPrice: 0.0000001 });
+    expect(r.status).toBe("rejected");
+    if (r.status === "unavailable") throw new Error("missing estimate");
+    expect(r.notional).toBeCloseTo(0.0075);
+    expect(r.lowestStop).toBeNull();
+    expect(r.reason).toContain("mínimo de 5 USDT");
+  });
+
+  it("accepts meaningful simulated orders above the internal 5 USDT minimum", () => {
+    const r = estimatePaperRisk({ ...base, quantity: 0.0001, stopPrice: 74700 });
+    expect(r.status).toBe("within_limit");
+    if (r.status === "unavailable") throw new Error("missing estimate");
+    expect(r.notional).toBeCloseTo(7.5);
+  });
+
   it("calculates 0.001 BTC 300 USDT stop distance as 0.30 risk", () => {
     const result = estimatePaperRisk(base);
     expect(result.status).toBe("within_limit");

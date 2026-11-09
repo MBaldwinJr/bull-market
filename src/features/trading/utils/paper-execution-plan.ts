@@ -1,4 +1,5 @@
 import { evaluatePaperEntry, type PaperEntryInput } from "./paper-entry-risk";
+import { MIN_PAPER_BUY_NOTIONAL_USDT } from "./paper-order-policy";
 
 /** Deterministic execution plan. Caller must revalidate under a DB row lock. */
 export type PaperExecutionPlan =
@@ -23,6 +24,8 @@ export function planPaperBuy(
     return { allowed: false, reason: "Taxa inválida" };
   const decision = evaluatePaperEntry(input);
   if (!decision.allowed) return decision;
+  if (decision.notional < MIN_PAPER_BUY_NOTIONAL_USDT)
+    return { allowed: false, reason: "Valor simulado inferior ao mínimo de 5 USDT" };
   const fee = decision.notional * input.feeRate;
   const totalDebit = decision.notional + fee;
   if (!Number.isFinite(totalDebit) || totalDebit > input.balance)
