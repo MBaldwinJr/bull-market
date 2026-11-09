@@ -37,9 +37,12 @@ BEGIN
     v_row_id := NEW.id;
     -- An internal order debit updates the account, but is NOT a
     -- configuration edit. The trade itself has a separate audit record.
-    IF TG_TABLE_NAME = 'paper_accounts'
-       AND NEW.initial_balance IS NOT DISTINCT FROM OLD.initial_balance THEN
-      RETURN NEW;
+    -- PL/pgSQL must not dereference table-specific fields in an AND
+    -- expression on other tables, because boolean short-circuit is not guaranteed.
+    IF TG_TABLE_NAME = 'paper_accounts' THEN
+      IF NEW.initial_balance IS NOT DISTINCT FROM OLD.initial_balance THEN
+        RETURN NEW;
+      END IF;
     END IF;
     IF v_new - 'updated_at' - 'created_at' =
        v_old - 'updated_at' - 'created_at' THEN
