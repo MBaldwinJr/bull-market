@@ -40,3 +40,5 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f drizzle/migrations/0002_atomic_paper_buy.sql
       - name: Run real PostgreSQL integration assertions
         run: psql -v ON_ERROR_STOP=1 -f tests/postgres/paper-buy-integration.sql
+      - name: Reset disposable schema and verify concurrent purchases
+        run: bash tests/postgres/paper-buy-concurrency.sh
