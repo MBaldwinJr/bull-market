@@ -66,6 +66,8 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f tests/postgres/paper-buy-invalid-inputs.sql
       - name: Reject duplicate client order IDs without a second debit
         run: psql -v ON_ERROR_STOP=1 -f tests/postgres/paper-buy-idempotency.sql
+      - name: Verify rollback after a forced position insert failure
+        run: psql -v ON_ERROR_STOP=1 -f tests/postgres/paper-buy-position-insert-rollback.sql
       - name: Verify rollback after a forced order insert failure
         run: psql -v ON_ERROR_STOP=1 -f tests/postgres/paper-buy-order-insert-rollback.sql
       - name: Verify rollback after a forced audit failure
