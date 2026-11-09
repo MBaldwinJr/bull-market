@@ -1,0 +1,40 @@
+name: Paper Execution Default-Off Guard
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/check-paper-execution-locked.mjs'
+      - '.github/workflows/**'
+      - 'src/features/trading/components/manual-paper-order-activation.ts'
+      - 'src/features/trading/components/manual-paper-order-preview.tsx'
+      - 'src/features/trading/server/paper-buy-execution-gate.server.ts'
+      - 'src/features/trading/server/paper-buy-controlled-executor.server.ts'
+      - 'src/features/trading/services/paper-buy.functions.ts'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/check-paper-execution-locked.mjs'
+      - '.github/workflows/**'
+      - 'src/features/trading/components/manual-paper-order-activation.ts'
+      - 'src/features/trading/components/manual-paper-order-preview.tsx'
+      - 'src/features/trading/server/paper-buy-execution-gate.server.ts'
+      - 'src/features/trading/server/paper-buy-controlled-executor.server.ts'
+      - 'src/features/trading/services/paper-buy.functions.ts'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fail-closed:
+    name: Reject accidental paper trading activation
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check paper trading execution stays disabled
+        run: node scripts/check-paper-execution-locked.mjs
