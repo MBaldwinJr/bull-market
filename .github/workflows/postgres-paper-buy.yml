@@ -50,6 +50,8 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f tests/postgres/paper-buy-owner-isolation.sql
       - name: Reject unsafe risk and bot configurations
         run: psql -v ON_ERROR_STOP=1 -f tests/postgres/paper-buy-risk-safety.sql
+      - name: Reject malformed order identifiers and symbols
+        run: psql -v ON_ERROR_STOP=1 -f tests/postgres/paper-buy-identifier-validation.sql
       - name: Reject stale and future market quotes
         run: psql -v ON_ERROR_STOP=1 -f tests/postgres/paper-buy-quote-boundaries.sql
       - name: Reject financial and position limit violations
