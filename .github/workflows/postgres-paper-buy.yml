@@ -38,6 +38,8 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f tests/postgres/paper-buy-fixture.sql
       - name: Install transaction function in disposable database
         run: psql -v ON_ERROR_STOP=1 -f drizzle/migrations/0002_atomic_paper_buy.sql
+      - name: Verify rollback after a forced audit failure
+        run: psql -v ON_ERROR_STOP=1 -f tests/postgres/paper-buy-rollback.sql
       - name: Run real PostgreSQL integration assertions
         run: psql -v ON_ERROR_STOP=1 -f tests/postgres/paper-buy-integration.sql
       - name: Reset disposable schema and verify concurrent purchases
