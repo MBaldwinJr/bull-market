@@ -32,3 +32,13 @@ ALTER TABLE public.paper_orders
 ALTER TABLE public.trading_strategies
   ADD CONSTRAINT trading_strategies_strategy_key_check
   CHECK (strategy_key IN ('trend_following','ema','rsi','macd','vwap','breakout','atr'));
+
+-- Additional observed production constraints for assets and bot safety.
+ALTER TABLE public.assets
+  ADD CONSTRAINT assets_symbol_check CHECK (symbol ~ '^[A-Z0-9]{2,20}$'),
+  ADD CONSTRAINT assets_owner_symbol_key UNIQUE (owner_id,symbol);
+ALTER TABLE public.bot_config
+  ADD CONSTRAINT bot_config_status_check CHECK (status IN ('stopped','running','emergency_stopped')),
+  ADD CONSTRAINT bot_config_trading_mode_check CHECK (trading_mode IN ('paper','testnet'));
+ALTER TABLE public.trading_strategies
+  ADD CONSTRAINT trading_strategies_owner_strategy_key_key UNIQUE (owner_id,strategy_key);
