@@ -32,6 +32,11 @@ BEGIN
     WHERE o.id=order_id AND o.owner_id=owner AND p.owner_id=owner
       AND o.client_order_id='test-order-0001'
       AND o.quantity=1 AND p.quantity=1 AND p.entry_price=50
+      AND o.requested_price=50 AND o.executed_price=50
+      AND o.fee=0.05 AND p.fees_paid=0.05
+      AND o.account_id=p.account_id
+      AND o.side='buy' AND p.side='long'
+      AND o.status='filled' AND p.status='open'
   ) THEN RAISE EXCEPTION 'Order and position ledger do not reconcile'; END IF;
   IF (SELECT count(*) FROM public.paper_orders WHERE id=order_id) <> 1 OR
      (SELECT count(*) FROM public.paper_positions WHERE owner_id=owner) <> 1 OR
