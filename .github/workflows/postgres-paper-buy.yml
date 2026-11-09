@@ -38,6 +38,8 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f tests/postgres/paper-buy-fixture.sql
       - name: Apply production-like database constraints
         run: psql -v ON_ERROR_STOP=1 -f tests/postgres/paper-buy-production-constraints.sql
+      - name: Assert production-like SQL constraints reject invalid records
+        run: psql -v ON_ERROR_STOP=1 -f tests/postgres/paper-buy-constraint-enforcement.sql
       - name: Install transaction function in disposable database
         run: psql -v ON_ERROR_STOP=1 -f drizzle/migrations/0002_atomic_paper_buy.sql
       - name: Verify paper execution SQL contract
