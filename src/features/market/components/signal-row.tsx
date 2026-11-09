@@ -23,6 +23,7 @@ export const SignalRow = memo(function SignalRow({ symbol }: { symbol: string })
         <span className="text-xs text-loss">Dados insuficientes ou desatualizados — sem decisão.</span>
       ) : (
         <div className="tabular grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-foreground sm:grid-cols-4">
+          <span>Fonte <b className="text-foreground">{candles.data?.[0]?.source === "kraken_public" ? "Kraken" : "Binance"}</b></span>
           <span>EMA9 <b className="text-foreground">{fmt(snap.ema9)}</b></span>
           <span>EMA21 <b className="text-foreground">{fmt(snap.ema21)}</b></span>
           <span>EMA200 <b className="text-foreground">{fmt(snap.ema200)}</b></span>
@@ -38,7 +39,7 @@ export const SignalRow = memo(function SignalRow({ symbol }: { symbol: string })
           <span>Candles <b className="text-foreground">{snap.candlesUsed}</b></span>
         </div>
       )}
-      {snap && <SignalIndicator score={snap.score} />}
+      {snap && !candles.error && <SignalIndicator score={snap.score} />}
     </div>
   );
 });
