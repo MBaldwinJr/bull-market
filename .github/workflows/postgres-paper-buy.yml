@@ -62,6 +62,8 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f tests/postgres/paper-buy-numeric-boundaries.sql
       - name: Reject invalid inputs without side effects
         run: psql -v ON_ERROR_STOP=1 -f tests/postgres/paper-buy-invalid-inputs.sql
+      - name: Reject duplicate client order IDs without a second debit
+        run: psql -v ON_ERROR_STOP=1 -f tests/postgres/paper-buy-idempotency.sql
       - name: Verify rollback after a forced audit failure
         run: psql -v ON_ERROR_STOP=1 -f tests/postgres/paper-buy-rollback.sql
       - name: Run real PostgreSQL integration assertions
