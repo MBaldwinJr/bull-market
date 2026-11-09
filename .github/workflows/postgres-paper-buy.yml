@@ -70,5 +70,7 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f tests/postgres/paper-buy-rollback.sql
       - name: Run real PostgreSQL integration assertions
         run: psql -v ON_ERROR_STOP=1 -f tests/postgres/paper-buy-integration.sql
+      - name: Verify concurrent duplicate client order rejection
+        run: bash tests/postgres/paper-buy-concurrent-duplicate.sh
       - name: Reset disposable schema and verify concurrent purchases
         run: bash tests/postgres/paper-buy-concurrency.sh
