@@ -17,17 +17,17 @@ BEGIN
  INSERT INTO public.assets(owner_id,symbol,auto_trade_enabled,deleted_at,status)
  VALUES(owner_b,'ETHUSDT',true,NULL,'active');
  INSERT INTO public.trading_strategies(owner_id,strategy_key,enabled,status)
- VALUES(owner_b,'foreign_strategy',true,'active');
+ VALUES(owner_b,'rsi',true,'active');
  SELECT cash_balance INTO before_cash FROM public.paper_accounts WHERE owner_id=owner_a;
  rejected := false;
  BEGIN
-   PERFORM public.execute_paper_buy(owner_a,'owner-isolation-01','ETHUSDT','test_strategy',1,50,49.75,0.001,now());
+   PERFORM public.execute_paper_buy(owner_a,'owner-isolation-01','ETHUSDT','ema',1,50,49.75,0.001,now());
  EXCEPTION WHEN OTHERS THEN rejected := true;
  END;
  IF NOT rejected THEN RAISE EXCEPTION 'Cross-owner asset was accepted'; END IF;
  rejected := false;
  BEGIN
-   PERFORM public.execute_paper_buy(owner_a,'owner-isolation-02','BTCUSDT','foreign_strategy',1,50,49.75,0.001,now());
+   PERFORM public.execute_paper_buy(owner_a,'owner-isolation-02','BTCUSDT','rsi',1,50,49.75,0.001,now());
  EXCEPTION WHEN OTHERS THEN rejected := true;
  END;
  IF NOT rejected THEN RAISE EXCEPTION 'Cross-owner strategy was accepted'; END IF;
