@@ -13,7 +13,7 @@ export function BinanceHealthDiagnostic() {
   const health = useExchangeHealth();
   const data = health.data;
   return (
-    <Panel title="Diagnóstico Binance — dados públicos">
+    <Panel title="Diagnóstico de fontes públicas — BTC/USDT">
       {health.isPending ? (
         <p className="text-sm text-muted-foreground">Verificando cotação BTC/USDT…</p>
       ) : health.error ? (
@@ -22,7 +22,7 @@ export function BinanceHealthDiagnostic() {
         </p>
       ) : data?.binancePublic ? (
         <p role="status" className="text-sm text-gain">
-          Cotação BTC/USDT validada. Latência: {data.latencyMs ?? "—"} ms.
+          Cotação BTC/USDT da Binance validada. Latência: {data.latencyMs ?? "—"} ms.
           Isso não autoriza o envio de ordens.
         </p>
       ) : (
@@ -31,9 +31,9 @@ export function BinanceHealthDiagnostic() {
           <p>{data?.failureReason ? reasons[data.failureReason] : "Falha não classificada."}</p>
           {data?.httpStatus ? <p>Código HTTP: {data.httpStatus}</p> : null}
           {data?.fallbackAvailable ? (
-            <p className="text-gain">Cotação alternativa BTC/USDT disponível via Kraken (somente diagnóstico). A negociação continua bloqueada.</p>
+            <p className="text-gain">Cotação pública BTC/USDT validada via Kraken. O Dashboard e o Mercado podem usar esses preços como alternativa à Binance. Isso não valida todos os ativos nem libera ordens.</p>
           ) : data?.failureReason === "http_error" ? (
-            <p>Fonte alternativa ainda não confirmada neste ambiente.</p>
+            <p>Cotação alternativa BTC/USDT não confirmada nesta verificação.</p>
           ) : null}
         </div>
       )}
