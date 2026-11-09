@@ -1,9 +1,10 @@
-/** Fetches the execution price from Binance's public spot API on the server.
- * Never accept the price or freshness timestamp from a browser request.
- */
-const BINANCE_PUBLIC = "https://data-api.binance.vision/api/v3";
-const SYMBOL_PATTERN = /^[A-Z0-9]{2,20}$/;
+import { fetchPublicSpotQuote } from "@/features/market/server/public-spot-quote.server";
 
+/**
+ * Trusted server-side spot quote for paper execution. Binance public market
+ * is preferred, Kraken public BTC/USDT or ETH/USDT is the fallback.
+ * No user-supplied price, credentials, exchange orders, or live trading.
+ */
 export interface TrustedPaperQuote {
   symbol: string;
   price: number;
@@ -11,18 +12,10 @@ export interface TrustedPaperQuote {
 }
 
 export async function fetchTrustedPaperQuote(symbol: string): Promise<TrustedPaperQuote> {
-  if (!SYMBOL_PATTERN.test(symbol)) throw new Error("Símbolo inválido");
-  const response = await fetch(`${BINANCE_PUBLIC}/ticker/price?symbol=${encodeURIComponent(symbol)}`, {
-    headers: { accept: "application/json" },
-    signal: AbortSignal.timeout(8000),
-    cache: "no-store",
-  });
-  if (!response.ok) throw new Error(`Binance respondeu ${response.status}`);
-  const payload: unknown = await response.json();
-  if (!payload || typeof payload !== "object") throw new Error("Cotação inválida");
-  const data = payload as Record<string, unknown>;
-  if (data["symbol"] !== symbol || typeof data["price"] !== "string") throw new Error("Cotação inconsistente");
-  const price = Number(data["price"]);
-  if (!Number.isFinite(price) || price <= 0) throw new Error("Preço inválido");
-  return { symbol, price, fetchedAt: new Date().toISOString() };
+  const quote = await fetchPublicSpotQuote(symbol);
+  const ageMs = Date.now() - Date.parse(quote.fetchedAt);
+  if (!Number.isFinite(ageMs) || ageMs < 0 || ageMs > 30_000) {
+    throw new Error("Cotação pública indisponível ou desatualizada");
+  }
+  return { symbol: quote.symbol, price: quote.price, fetchedAt: quote.fetchedAt };
 }
