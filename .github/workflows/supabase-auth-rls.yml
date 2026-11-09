@@ -1,0 +1,129 @@
+name: Supabase Auth signup and RLS (disposable)
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/supabase-auth-rls.yml'
+      - 'tests/supabase/**'
+      - 'drizzle/migrations/**'
+      - 'supabase/config.toml'
+  workflow_dispatch:
+
+# Never deploy, link to a remote project, or read any repository secrets.
+permissions:
+  contents: read
+
+jobs:
+  local-auth-rls:
+    name: Real Supabase Auth signup + JWT RLS, local only
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: "54322"
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: postgres
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Set up Supabase CLI
+        uses: supabase/setup-cli@v3
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Start a disposable local Supabase stack
+        run: |
+          # The runner has no linked Supabase project or hosted credentials.
+          # Keep Auth, API gateway, PostgREST, and PostgreSQL; skip other services.
+          supabase start -x studio,realtime,storage-api,imgproxy,postgres-meta,edge-runtime,logflare,vector,supavisor
+          supabase status -o env > "$RUNNER_TEMP/supabase-local.env"
+          chmod 600 "$RUNNER_TEMP/supabase-local.env"
+
+      - name: Install exact source migrations in the LOCAL database only
+        run: |
+          for migration in \
+            drizzle/migrations/0000_migration.sql \
+            drizzle/migrations/0001_paper_account_integrity.sql \
+            drizzle/migrations/0002_atomic_paper_buy.sql \
+            drizzle/migrations/0004_paper_buy_min_notional.sql
+          do
+            psql -v ON_ERROR_STOP=1 -f "$migration" >/dev/null
+          done
+          psql -v ON_ERROR_STOP=1 -c "NOTIFY pgrst, 'reload schema';"
+          sleep 3
+
+      - name: Assert signup trigger, RLS, and paper execution restrictions
+        run: |
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          DO $$
+          DECLARE
+            v_triggers integer;
+            v_rls integer;
+          BEGIN
+            SELECT count(*) INTO v_triggers
+            FROM pg_trigger t
+            WHERE t.tgrelid='auth.users'::regclass AND NOT t.tgisinternal
+              AND t.tgenabled IN ('O','A')
+              AND t.tgfoid='public.handle_new_user()'::regprocedure;
+            IF v_triggers<>1 THEN
+              RAISE EXCEPTION 'Expected one enabled signup trigger: found %',v_triggers;
+            END IF;
+
+            IF NOT (SELECT p.prosecdef FROM pg_proc p
+                    WHERE p.oid='public.handle_new_user()'::regprocedure) THEN
+              RAISE EXCEPTION 'Signup trigger function must be SECURITY DEFINER';
+            END IF;
+
+            SELECT count(*) INTO v_rls FROM pg_class c
+            WHERE c.oid IN ('public.profiles'::regclass,
+                            'public.bot_config'::regclass,
+                            'public.risk_limits'::regclass,
+                            'public.paper_accounts'::regclass,
+                            'public.assets'::regclass,
+                            'public.trading_strategies'::regclass)
+              AND c.relrowsecurity;
+            IF v_rls<>6 THEN
+              RAISE EXCEPTION 'Required signup tables do not all have RLS';
+            END IF;
+
+            IF has_function_privilege('anon',
+              'public.execute_paper_buy(uuid,text,text,text,numeric,numeric,numeric,numeric,timestamptz)',
+              'EXECUTE')
+              OR has_function_privilege('authenticated',
+              'public.execute_paper_buy(uuid,text,text,text,numeric,numeric,numeric,numeric,timestamptz)',
+              'EXECUTE')
+              OR NOT has_function_privilege('service_role',
+              'public.execute_paper_buy(uuid,text,text,text,numeric,numeric,numeric,numeric,timestamptz)',
+              'EXECUTE')
+            THEN RAISE EXCEPTION 'Paper trade function permissions are unsafe'; END IF;
+
+            IF position('IF v_notional < 5 THEN' in pg_get_functiondef(
+                 'public.execute_paper_buy(uuid,text,text,text,numeric,numeric,numeric,numeric,timestamptz)'::regprocedure))=0
+            THEN RAISE EXCEPTION 'Migration 0004 notional guard missing'; END IF;
+
+            IF (SELECT count(*) FROM auth.users)<>0
+               OR (SELECT count(*) FROM public.paper_orders)<>0 THEN
+               RAISE EXCEPTION 'Local test fixture is not empty'; END IF;
+          END $$;
+          SQL
+
+      - name: Register two real Auth users and verify RLS with JWTs
+        env:
+          SUPABASE_LOCAL_ENV_FILE: /tmp/supabase-auth-ci.env
+        run: |
+          cp "$RUNNER_TEMP/supabase-local.env" /tmp/supabase-auth-ci.env
+          chmod 600 /tmp/supabase-auth-ci.env
+          python3 tests/supabase/auth-signup-rls.py
+
+      - name: Destroy disposable local Supabase containers and volumes
+        if: always()
+        run: supabase stop --no-backup || true
