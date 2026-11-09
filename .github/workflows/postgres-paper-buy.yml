@@ -46,6 +46,8 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f tests/postgres/paper-buy-contract.sql
       - name: Verify SQL function privileges
         run: psql -v ON_ERROR_STOP=1 -f tests/postgres/paper-buy-privileges.sql
+      - name: Reject unknown and non-paper account identities
+        run: psql -v ON_ERROR_STOP=1 -f tests/postgres/paper-buy-account-identity.sql
       - name: Reject missing owner configuration records
         run: psql -v ON_ERROR_STOP=1 -f tests/postgres/paper-buy-missing-records.sql
       - name: Verify cross-owner asset and strategy isolation
