@@ -12,10 +12,10 @@ BEGIN
    rejected := false;
    BEGIN
      CASE i
-       WHEN 1 THEN PERFORM public.execute_paper_buy(owner,'quote-invalid-01','BTCUSDT','test_strategy',1,50,49.75,0.001,now()-interval '31 seconds');
-       WHEN 2 THEN PERFORM public.execute_paper_buy(owner,'quote-invalid-02','BTCUSDT','test_strategy',1,50,49.75,0.001,now()-interval '10 minutes');
-       WHEN 3 THEN PERFORM public.execute_paper_buy(owner,'quote-invalid-03','BTCUSDT','test_strategy',1,50,49.75,0.001,now()+interval '6 seconds');
-       WHEN 4 THEN PERFORM public.execute_paper_buy(owner,'quote-invalid-04','BTCUSDT','test_strategy',1,50,49.75,0.001,now()+interval '1 hour');
+       WHEN 1 THEN PERFORM public.execute_paper_buy(owner,'quote-invalid-01','BTCUSDT','ema',1,50,49.75,0.001,now()-interval '31 seconds');
+       WHEN 2 THEN PERFORM public.execute_paper_buy(owner,'quote-invalid-02','BTCUSDT','ema',1,50,49.75,0.001,now()-interval '10 minutes');
+       WHEN 3 THEN PERFORM public.execute_paper_buy(owner,'quote-invalid-03','BTCUSDT','ema',1,50,49.75,0.001,now()+interval '6 seconds');
+       WHEN 4 THEN PERFORM public.execute_paper_buy(owner,'quote-invalid-04','BTCUSDT','ema',1,50,49.75,0.001,now()+interval '1 hour');
      END CASE;
    EXCEPTION WHEN OTHERS THEN rejected := true;
    END;
