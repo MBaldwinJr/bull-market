@@ -100,15 +100,40 @@ export interface ExchangeHealth {
   readonly binancePublic: boolean;
   readonly latencyMs: number | null;
   readonly checkedAt: number;
+  readonly failureReason?: "timeout" | "network" | "http_error" | "invalid_response";
+  readonly httpStatus?: number;
 }
 
 export const getExchangeHealth = createServerFn({ method: "GET" }).handler(async (): Promise<ExchangeHealth> => {
   const start = Date.now();
   try {
-    const res = await fetch(`${BINANCE_PUBLIC}/ping`, { signal: AbortSignal.timeout(8000) });
-    return { binancePublic: res.ok, latencyMs: Date.now() - start, checkedAt: Date.now() };
-  } catch {
-    return { binancePublic: false, latencyMs: null, checkedAt: Date.now() };
+    // A successful ping alone is insufficient: trading requires valid prices.
+    const res = await fetch(`${BINANCE_PUBLIC}/ticker/price?symbol=BTCUSDT`, {
+      signal: AbortSignal.timeout(8000),
+      headers: { accept: "application/json" },
+      cache: "no-store",
+    });
+    const latencyMs = Date.now() - start;
+    if (!res.ok) return {
+      binancePublic: false, latencyMs, checkedAt: Date.now(),
+      failureReason: "http_error", httpStatus: res.status,
+    };
+    const payload: unknown = await res.json();
+    const valid = Boolean(payload && typeof payload === "object" &&
+      (payload as Record<string, unknown>)["symbol"] === "BTCUSDT" &&
+      typeof (payload as Record<string, unknown>)["price"] === "string" &&
+      Number.isFinite(Number((payload as Record<string, unknown>)["price"])) &&
+      Number((payload as Record<string, unknown>)["price"]) > 0);
+    return {
+      binancePublic: valid, latencyMs, checkedAt: Date.now(),
+      ...(!valid ? { failureReason: "invalid_response" as const } : {}),
+    };
+  } catch (error) {
+    const timeout = error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError");
+    return {
+      binancePublic: false, latencyMs: Date.now() - start, checkedAt: Date.now(),
+      failureReason: timeout ? "timeout" : "network",
+    };
   }
 });
 
