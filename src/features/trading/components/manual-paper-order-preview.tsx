@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { preparePaperBuy } from "@/features/trading/services/paper-buy.functions";
 import { useAuth } from "@/features/auth/use-auth";
+import { useAssets, useBotConfig, usePaperAccount, useRiskLimits, useStrategies } from "@/features/account/hooks/use-account";
+import { assessPaperPreflightReadiness } from "./paper-preflight-readiness";
 import { Input } from "@/components/ui/input";
 import { Panel } from "@/components/trading/panel";
 import { canSubmitManualPaperOrder } from "./manual-paper-order-activation";
@@ -17,10 +19,23 @@ export function ManualPaperOrderPreview() {
   const [confirmation, setConfirmation] = useState("");
   const [strategyKey, setStrategyKey] = useState("ema");
   const { session } = useAuth();
+  const account = usePaperAccount();
+  const bot = useBotConfig();
+  const riskLimits = useRiskLimits();
+  const assets = useAssets();
+  const strategies = useStrategies();
+  const readiness = assessPaperPreflightReadiness({
+    symbol, strategyKey,
+    account: account.data,
+    bot: bot.data,
+    limits: riskLimits.data,
+    assets: assets.data,
+    strategies: strategies.data,
+  });
   const prepare = useServerFn(preparePaperBuy);
   const [preflight, setPreflight] = useState<string | null>(null);
   const [preparing, setPreparing] = useState(false);
-  const canPrepare = /^[A-Z0-9]{2,20}$/.test(symbol) && /^[a-z_]{2,128}$/.test(strategyKey) &&
+  const canPrepare = readiness.status === "preflight_checkable" && /^[A-Z0-9]{2,20}$/.test(symbol) && /^[a-z_]{2,128}$/.test(strategyKey) &&
     quantity.trim().length > 0 && stopPrice.trim().length > 0 &&
     Number.isFinite(Number(quantity)) && Number(quantity) > 0 &&
     Number.isFinite(Number(stopPrice)) && Number(stopPrice) > 0 &&
@@ -46,6 +61,17 @@ export function ManualPaperOrderPreview() {
       <p role="status" className="mb-3 text-sm text-muted-foreground">
         Paper Trading: envio de ordens bloqueado. Preencha os campos apenas para conhecer o fluxo de confirmação.
       </p>
+      <div className="mb-3 rounded-md border p-3 text-sm" role="status" aria-live="polite">
+        <p className="font-semibold">Pré-verificação de configurações (somente leitura)</p>
+        <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
+          {readiness.messages.map((message) => <li key={message}>{message}</li>)}
+        </ul>
+        {readiness.status === "blocked" && (
+          <p className="mt-2 text-xs text-muted-foreground">
+            Configure o ativo e a estratégia manualmente, se desejar. Esta tela não ativa negociações.
+          </p>
+        )}
+      </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="text-sm">Par
           <Input className="mt-1" value={symbol} onChange={(e) => setSymbol(e.target.value.toUpperCase())} maxLength={20} />
@@ -65,7 +91,7 @@ export function ManualPaperOrderPreview() {
         </label>
       </div>
       <p className="mt-3 text-xs text-muted-foreground">
-        Cotação, saldo e limites de risco serão verificados pelo servidor na futura ativação.
+        A pré-verificação não substitui a validação no servidor. A cotação, o saldo e o risco serão reavaliados no teste sem executar.
         Nenhum preço ou valor será enviado a uma corretora.
       </p>
       <button type="button" onClick={() => void runPreflight()} disabled={!canPrepare || preparing} className="mt-3 mr-2 rounded-md border px-4 py-2 text-sm">
