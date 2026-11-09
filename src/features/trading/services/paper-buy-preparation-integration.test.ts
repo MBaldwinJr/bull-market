@@ -129,7 +129,7 @@ describe("server-side paper buy preparation: never execute", () => {
       ["status", "executed", "symbol", "quantity", "entryPrice", "fee", "totalDebit"].sort(),
     );
     expect(identity.getUser).toHaveBeenCalledTimes(1);
-    expect(loadPaperBuyState).toHaveBeenCalledWith(OWNER, request.clientOrderId);
+    expect(loadPaperBuyState).toHaveBeenCalledWith(identity.context.supabase, OWNER, request.clientOrderId);
     expect(fetchTrustedPaperQuote).toHaveBeenCalledWith("BTCUSDT");
     expect(identity.forbidden).not.toHaveBeenCalled();
   });
@@ -180,7 +180,9 @@ describe("server-side paper buy preparation: never execute", () => {
       vi.mocked(loadPaperBuyState).mockResolvedValueOnce(invalid as PaperBuyState);
       await expect(run({ data: request, context: identity.context })).rejects.toThrow();
     }
-    expect(fetchTrustedPaperQuote).not.toHaveBeenCalled();
+    // Stopped robots are rejected by risk planning after fetching a trusted quote;
+    // disabled strategies and duplicate IDs stop before quoting.
+    expect(fetchTrustedPaperQuote).toHaveBeenCalledTimes(1);
     expect(identity.forbidden).not.toHaveBeenCalled();
   });
 
