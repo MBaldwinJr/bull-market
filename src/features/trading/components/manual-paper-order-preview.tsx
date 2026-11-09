@@ -9,6 +9,10 @@ import { assessPaperPreflightReadiness } from "./paper-preflight-readiness";
 import { Input } from "@/components/ui/input";
 import { Panel } from "@/components/trading/panel";
 import { canSubmitManualPaperOrder } from "./manual-paper-order-activation";
+import { MIN_PAPER_BUY_NOTIONAL_USDT } from "../utils/paper-order-policy";
+
+const fmtUSDT = (value: number, decimals = 8) => value.toLocaleString("pt-BR", { maximumFractionDigits: decimals });
+const fmtQuantity = (value: number) => value.toLocaleString("pt-BR", { maximumFractionDigits: 10 });
 
 /**
  * Readiness UI only: does not import or call any server submission endpoint.
@@ -53,6 +57,7 @@ export function ManualPaperOrderPreview() {
   const prepare = useServerFn(preparePaperBuy);
   const [preflight, setPreflight] = useState<string | null>(null);
   const [preparing, setPreparing] = useState(false);
+  useEffect(() => { setPreflight(null); }, [symbol, quantity, stopPrice, strategyKey, confirmation]);
   const canPrepare = indicative.status === "within_limit" && readiness.status === "preflight_checkable" && /^[A-Z0-9]{2,20}$/.test(symbol) && /^[a-z_]{2,128}$/.test(strategyKey) &&
     quantity.trim().length > 0 && stopPrice.trim().length > 0 &&
     Number.isFinite(Number(quantity)) && Number(quantity) > 0 &&
@@ -67,7 +72,10 @@ export function ManualPaperOrderPreview() {
         clientOrderId: `preflight-${crypto.randomUUID()}`,
         symbol, strategyKey, quantity: Number(quantity), stopPrice: Number(stopPrice),
       }, headers: { Authorization: `Bearer ${session.access_token}` } });
-      setPreflight(`Preparação validada, sem execução: ${receipt.symbol}, ${receipt.quantity}, cotação ${receipt.entryPrice} USDT, taxa ${receipt.fee} USDT, débito estimado ${receipt.totalDebit} USDT.`);
+      if (receipt.status !== "prepared_only" || receipt.executed !== false) {
+        throw new Error("Resposta de preparação inesperada");
+      }
+      setPreflight(`Preparação validada, sem execução: ${receipt.symbol}, quantidade ${fmtQuantity(receipt.quantity)}, cotação ${fmtUSDT(receipt.entryPrice, 4)} USDT, taxa ${fmtUSDT(receipt.fee, 10)} USDT, débito estimado ${fmtUSDT(receipt.totalDebit, 8)} USDT.`);
     } catch (error) {
       const message = error instanceof Error ? error.message : "";
       const safeReasons = [
@@ -76,6 +84,7 @@ export function ManualPaperOrderPreview() {
         "Cotação indisponível ou desatualizada", "Robô não está em execução",
         "Ativo não autorizado", "Estratégia não autorizada", "Limite de posições atingido",
         "Limite de perda diária atingido",
+        "Valor simulado inferior ao mínimo de 5 USDT",
       ];
       const safeReason = safeReasons.find((reason) => message.includes(reason));
       setPreflight(safeReason
@@ -135,9 +144,13 @@ export function ManualPaperOrderPreview() {
             <p>Risco estimado até o stop: {indicative.risk.toLocaleString("pt-BR", { maximumFractionDigits: 4 })} USDT
               {" · "}Limite: {indicative.riskLimit.toLocaleString("pt-BR", { maximumFractionDigits: 4 })} USDT
             </p>
-            <p>Stop mínimo aproximado para o limite atual: {
-              indicative.lowestStop.toLocaleString("pt-BR", { maximumFractionDigits: 4 })
-            } USDT (sempre abaixo do preço de entrada).</p>
+            <p>Valor nominal estimado: {fmtUSDT(indicative.notional, 8)} USDT
+              {" · "}Mínimo operacional do simulador: {fmtUSDT(MIN_PAPER_BUY_NOTIONAL_USDT, 2)} USDT.
+            </p>
+            <p>{indicative.lowestStop === null
+              ? "O limite de risco não define um stop mínimo positivo para essa quantidade. O stop deve ser maior que zero e menor que a entrada."
+              : `Stop mínimo aproximado para o limite atual: ${fmtUSDT(indicative.lowestStop, 4)} USDT.`}
+            </p>
             <p className={indicative.status === "rejected" ? "mt-2 text-loss" : "mt-2 text-gain"}>
               {indicative.reason}
             </p>
@@ -146,6 +159,9 @@ export function ManualPaperOrderPreview() {
         <p className="mt-2 text-xs text-muted-foreground">Estimativa local com preço público; não garante aprovação.
           O servidor consulta novamente a cotação e os limites antes de validar.</p>
       </div>
+      <p className="mt-3 text-xs text-muted-foreground">
+        Valor mínimo de teste: 5 USDT (regra interna do Bull Market, não um limite oficial da corretora).
+      </p>
       <p className="mt-3 text-xs text-muted-foreground">
         A pré-verificação não substitui a validação no servidor. A cotação, o saldo e o risco serão reavaliados no teste sem executar.
         Nenhum preço ou valor será enviado a uma corretora.
