@@ -34,7 +34,7 @@ DO $$
 DECLARE
  signature text := 'public.execute_paper_buy(uuid,text,text,text,numeric,numeric,numeric,numeric,timestamptz)';
 BEGIN
- IF has_function_privilege('public',signature,'EXECUTE') THEN
+ IF EXISTS (SELECT 1 FROM pg_proc p, LATERAL aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) acl WHERE p.oid=signature::regprocedure AND acl.grantee=0 AND acl.privilege_type='EXECUTE') THEN
    RAISE EXCEPTION 'PUBLIC unexpectedly has EXECUTE privilege';
  END IF;
 END $$;
