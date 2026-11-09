@@ -22,9 +22,33 @@ DECLARE
 BEGIN
  BEGIN
   PERFORM public.execute_paper_buy('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-   'forbidden-order-0001','BTCUSDT','test_strategy',1,50,49.75,0.001,now());
+   'forbidden-order-0001','BTCUSDT','ema',1,50,49.75,0.001,now());
  EXCEPTION WHEN insufficient_privilege THEN rejected := true;
  END;
  IF NOT rejected THEN RAISE EXCEPTION 'authenticated invoked restricted function'; END IF;
+END $$;
+RESET ROLE;
+
+-- Verify the function is not executable by PUBLIC and cannot be called as anon.
+DO $$
+DECLARE
+ signature text := 'public.execute_paper_buy(uuid,text,text,text,numeric,numeric,numeric,numeric,timestamptz)';
+BEGIN
+ IF EXISTS (SELECT 1 FROM pg_proc p, LATERAL aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) acl WHERE p.oid=signature::regprocedure AND acl.grantee=0 AND acl.privilege_type='EXECUTE') THEN
+   RAISE EXCEPTION 'PUBLIC unexpectedly has EXECUTE privilege';
+ END IF;
+END $$;
+SET ROLE anon;
+SELECT set_config('request.jwt.claim.role','anon',false);
+DO $$
+DECLARE
+ rejected boolean := false;
+BEGIN
+ BEGIN
+  PERFORM public.execute_paper_buy('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+   'forbidden-anon-0001','BTCUSDT','ema',1,50,49.75,0.001,now());
+ EXCEPTION WHEN insufficient_privilege THEN rejected := true;
+ END;
+ IF NOT rejected THEN RAISE EXCEPTION 'anon invoked restricted function'; END IF;
 END $$;
 RESET ROLE;
