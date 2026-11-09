@@ -3,7 +3,7 @@ set -euo pipefail
 # Runs only in disposable GitHub Actions PostgreSQL, never production.
 owner='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
 export PGOPTIONS='-c request.jwt.claim.role=service_role'
-psql -v ON_ERROR_STOP=1 -c "UPDATE public.paper_accounts SET cash_balance=100 WHERE owner_id='$owner'; DELETE FROM public.audit_logs; DELETE FROM public.paper_orders; DELETE FROM public.paper_positions;" >/dev/null
+psql -v ON_ERROR_STOP=1 -c "UPDATE public.paper_accounts SET cash_balance=100 WHERE owner_id='$owner'; DELETE FROM public.audit_logs; DELETE FROM public.paper_orders; DELETE FROM public.paper_positions; UPDATE public.bot_config SET live_trading_enabled=false, allow_withdrawals=false, trading_mode='paper', status='running' WHERE owner_id='$owner';" >/dev/null
 # Two independent transactions race for the same 100 USDT balance.
 psql -v ON_ERROR_STOP=1 -c "SELECT public.execute_paper_buy('$owner','race-order-0001','BTCUSDT','test_strategy',1.5,50,49.75,0.001,now());" >/tmp/paper-race-1.log 2>&1 &
 p1=$!
