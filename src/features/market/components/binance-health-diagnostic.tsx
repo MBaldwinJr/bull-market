@@ -27,7 +27,7 @@ export function BinanceHealthDiagnostic() {
         </p>
       ) : (
         <div role="alert" className="space-y-1 text-sm">
-          <p className="text-destructive">Cotação pública indisponível. Compras bloqueadas.</p>
+          <p className="text-destructive">Binance indisponível. Compras bloqueadas.</p>
           <p>{data?.failureReason ? reasons[data.failureReason] : "Falha não classificada."}</p>
           {data?.httpStatus ? <p>Código HTTP: {data.httpStatus}</p> : null}
           {data?.fallbackAvailable ? (
