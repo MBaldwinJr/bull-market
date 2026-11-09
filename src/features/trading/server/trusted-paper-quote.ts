@@ -21,8 +21,8 @@ export async function fetchTrustedPaperQuote(symbol: string): Promise<TrustedPap
   const payload: unknown = await response.json();
   if (!payload || typeof payload !== "object") throw new Error("Cotação inválida");
   const data = payload as Record<string, unknown>;
-  if (data.symbol !== symbol || typeof data.price !== "string") throw new Error("Cotação inconsistente");
-  const price = Number(data.price);
+  if (data["symbol"] !== symbol || typeof data["price"] !== "string") throw new Error("Cotação inconsistente");
+  const price = Number(data["price"]);
   if (!Number.isFinite(price) || price <= 0) throw new Error("Preço inválido");
   return { symbol, price, fetchedAt: new Date().toISOString() };
 }

@@ -11,7 +11,7 @@ describe("trusted paper quote", () => {
     const quote = await fetchTrustedPaperQuote("BTCUSDT");
     expect(quote).toMatchObject({ symbol: "BTCUSDT", price: 123.45 });
     expect(fetchMock).toHaveBeenCalledOnce();
-    expect(fetchMock.mock.calls[0][1]).toMatchObject({ cache: "no-store" });
+    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({ cache: "no-store" });
   });
   it("rejects invalid symbols without network access", async () => {
     const fetchMock = vi.fn();
