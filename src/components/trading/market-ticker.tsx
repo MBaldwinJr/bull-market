@@ -3,7 +3,7 @@ import { useTickers } from "@/features/market/hooks/use-market";
 import { formatPct, formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
-/** Live strip of watched assets from Binance public market data. */
+/** Live strip of independently validated public prices from available markets. */
 export function MarketTicker() {
   const assets = useAssets();
   const symbols = (assets.data ?? []).map((a) => a.symbol);
@@ -14,7 +14,7 @@ export function MarketTicker() {
       {symbols.length === 0 ? (
         <span className="text-xs text-muted-foreground">Nenhum ativo monitorado. Adicione ativos em Configurações.</span>
       ) : tickers.error ? (
-        <span className="text-xs text-loss">Cotações indisponíveis — verifique a conexão com a Binance. Novas entradas devem permanecer bloqueadas.</span>
+        <span className="text-xs text-loss">Cotações públicas indisponíveis. Novas entradas devem permanecer bloqueadas.</span>
       ) : !tickers.data ? (
         <span className="text-xs text-muted-foreground">Carregando cotações…</span>
       ) : (
