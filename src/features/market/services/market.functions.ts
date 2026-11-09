@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import type { Candle } from "../utils/indicators";
+import type { PublicCandle } from "../server/public-market-data.server";
 import type { PublicTicker } from "../server/public-market-data.server";
 
 // Public market-data mirror of Binance Spot. Only public endpoints: no keys, no orders.
@@ -30,7 +30,7 @@ export const getCandles = createServerFn({ method: "GET" })
       limit: z.number().int().min(30).max(1000).default(300),
     }).parse(input),
   )
-  .handler(async ({ data }): Promise<Candle[]> => {
+  .handler(async ({ data }): Promise<PublicCandle[]> => {
     const { fetchPublicCandles } = await import("../server/public-market-data.server");
     return fetchPublicCandles(data.symbol, data.interval, data.limit);
   });
