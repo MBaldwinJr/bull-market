@@ -9,15 +9,15 @@ BEGIN
  PERFORM set_config('request.jwt.claim.role','service_role',true);
  SELECT cash_balance INTO before_cash FROM public.paper_accounts WHERE owner_id=owner;
  FOR i IN 1..5 LOOP
-   rejected := false;
-   BEGIN
-     CASE i
+   CASE i
        WHEN 1 THEN DELETE FROM public.bot_config WHERE owner_id=owner;
        WHEN 2 THEN DELETE FROM public.risk_limits WHERE owner_id=owner;
        WHEN 3 THEN DELETE FROM public.assets WHERE owner_id=owner;
        WHEN 4 THEN DELETE FROM public.trading_strategies WHERE owner_id=owner;
        WHEN 5 THEN UPDATE public.paper_accounts SET status='inactive' WHERE owner_id=owner;
-     END CASE;
+   END CASE;
+   rejected := false;
+   BEGIN
      PERFORM public.execute_paper_buy(owner,'missing-record-0'||i,'BTCUSDT','test_strategy',1,50,49.75,0.001,now());
    EXCEPTION WHEN OTHERS THEN rejected := true;
    END;
