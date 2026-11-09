@@ -1,0 +1,42 @@
+name: PostgreSQL Configuration Audit
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  config-audit:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: config_audit_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: config_audit_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Prepare disposable database fixture
+        run: psql -v ON_ERROR_STOP=1 -f tests/postgres/config-audit-fixture.sql
+      - name: Install migration 0003 in disposable database
+        run: psql -v ON_ERROR_STOP=1 -f drizzle/migrations/0003_configuration_audit.sql
+      - name: Verify privilege isolation, audit coverage and atomic rollback
+        run: psql -v ON_ERROR_STOP=1 -f tests/postgres/config-audit-integration.sql

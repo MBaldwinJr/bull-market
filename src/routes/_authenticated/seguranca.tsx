@@ -15,7 +15,7 @@ const RULES: readonly string[] = [
   "O banco rejeita live_trading_enabled = true, alavancagem > 0 e saques.",
   "Não existe endpoint para habilitar produção.",
   "A IA não pode enviar ordens, alterar limites ou liberar operações reais.",
-  "Toda ação de configuração gera registro de auditoria.",
+  "Os logs são protegidos contra inserções diretas; a auditoria automática de configurações requer a migration 0003 no banco.",
 ];
 
 function SecurityPage() {

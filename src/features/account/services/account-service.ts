@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import type { RiskLimitsInput } from "../schemas";
+import { assertPersistedRiskLimits } from "../utils/risk-persistence";
 
 type Tables = Database["public"]["Tables"];
 export type BotConfig = Tables["bot_config"]["Row"];
@@ -46,7 +47,14 @@ export const accountService = {
     unwrap<Strategy[]>(await supabase.from("trading_strategies").select("*").order("name")),
 
   updateRiskLimits: async (id: string, input: RiskLimitsInput) => {
-    unwrap(await supabase.from("risk_limits").update(input).eq("id", id).select().single());
+    const ownerId = await currentUserId();
+    const updated = unwrap<RiskLimits>(await supabase.from("risk_limits")
+      .update(input).eq("id", id).eq("owner_id", ownerId).select().single());
+    assertPersistedRiskLimits(updated, { id, ownerId, input });
+    // A separate read confirms the durable state rather than just UPDATE's reply.
+    const persisted = unwrap<RiskLimits>(await supabase.from("risk_limits")
+      .select("*").eq("id", id).eq("owner_id", ownerId).single());
+    assertPersistedRiskLimits(persisted, { id, ownerId, input });
   },
 
   setBotStatus: async (id: string, status: BotConfig["status"]) => {
