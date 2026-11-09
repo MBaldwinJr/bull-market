@@ -50,6 +50,8 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f tests/postgres/paper-buy-owner-isolation.sql
       - name: Reject unsafe risk and bot configurations
         run: psql -v ON_ERROR_STOP=1 -f tests/postgres/paper-buy-risk-safety.sql
+      - name: Reject invalid numeric boundaries
+        run: psql -v ON_ERROR_STOP=1 -f tests/postgres/paper-buy-numeric-boundaries.sql
       - name: Reject invalid inputs without side effects
         run: psql -v ON_ERROR_STOP=1 -f tests/postgres/paper-buy-invalid-inputs.sql
       - name: Verify rollback after a forced audit failure
