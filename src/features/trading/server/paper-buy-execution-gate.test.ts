@@ -37,4 +37,15 @@ describe("paper buy execution gate", () => {
     expect(() => executePreparedPaperBuy(payload)).not.toThrow();
     expect(executePreparedPaperBuy(payload).executed).toBe(false);
   });
+  it("stays disabled even if PAPER_TRADING_EXECUTION_ENABLED is accidentally true", () => {
+    const previous = process.env["PAPER_TRADING_EXECUTION_ENABLED"];
+    try {
+      process.env["PAPER_TRADING_EXECUTION_ENABLED"] = "true";
+      const receipt = executePreparedPaperBuy({} as PreparedPaperBuy);
+      expect(receipt).toMatchObject({ status: "execution_disabled", executed: false });
+    } finally {
+      if (previous === undefined) delete process.env["PAPER_TRADING_EXECUTION_ENABLED"];
+      else process.env["PAPER_TRADING_EXECUTION_ENABLED"] = previous;
+    }
+  });
 });
