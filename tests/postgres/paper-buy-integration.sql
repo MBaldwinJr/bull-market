@@ -26,6 +26,13 @@ BEGIN
   order_id := public.execute_paper_buy(owner,'test-order-0001','BTCUSDT','ema',1,50,49.75,0.001,now());
   SELECT cash_balance INTO after_cash FROM public.paper_accounts WHERE owner_id=owner;
   IF after_cash <> 49.95 THEN RAISE EXCEPTION 'Incorrect cash after buy: %',after_cash; END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM public.paper_orders o
+    JOIN public.paper_positions p ON p.id=o.position_id
+    WHERE o.id=order_id AND o.owner_id=owner AND p.owner_id=owner
+      AND o.client_order_id='test-order-0001'
+      AND o.quantity=1 AND p.quantity=1 AND p.entry_price=50
+  ) THEN RAISE EXCEPTION 'Order and position ledger do not reconcile'; END IF;
   IF (SELECT count(*) FROM public.paper_orders WHERE id=order_id) <> 1 OR
      (SELECT count(*) FROM public.paper_positions WHERE owner_id=owner) <> 1 OR
      (SELECT count(*) FROM public.audit_logs WHERE owner_id=owner) <> 1
