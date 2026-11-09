@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import type { RiskLimitsInput } from "../schemas";
 import { assertPersistedRiskLimits } from "../utils/risk-persistence";
+import { canSetPaperAssetPermission } from "../utils/paper-asset-permission";
 
 type Tables = Database["public"]["Tables"];
 export type BotConfig = Tables["bot_config"]["Row"];
@@ -98,6 +99,29 @@ export const accountService = {
         .select()
         .single(),
     );
+  },
+
+  setAssetPaperPermission: async (asset: Asset, enabled: boolean) => {
+    // No trading endpoint, no exchange key, and no automatic bot activation.
+    if (!canSetPaperAssetPermission(asset, enabled)) {
+      throw new Error("Permissão disponível apenas para BTC/USDT e ETH/USDT ativos.");
+    }
+    const ownerId = await currentUserId();
+    if (asset.owner_id !== ownerId) throw new Error("Ativo fora da conta autenticada");
+    const saved = unwrap<Asset>(await supabase.from("assets")
+      .update({ auto_trade_enabled: enabled })
+      .eq("id", asset.id).eq("owner_id", ownerId)
+      .eq("status", "active").is("deleted_at", null)
+      .select("*").single());
+    if (saved.owner_id !== ownerId || saved.id !== asset.id ||
+        saved.auto_trade_enabled !== enabled) {
+      throw new Error("O banco não confirmou a alteração da permissão.");
+    }
+    const verified = unwrap<Asset>(await supabase.from("assets")
+      .select("*").eq("id", asset.id).eq("owner_id", ownerId).single());
+    if (verified.auto_trade_enabled !== enabled) {
+      throw new Error("A permissão não foi confirmada em nova leitura.");
+    }
   },
 
   removeAsset: async (asset: Asset) => {
