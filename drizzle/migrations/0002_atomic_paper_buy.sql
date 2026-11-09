@@ -28,7 +28,7 @@ BEGIN
     RAISE EXCEPTION 'Only the backend may execute paper orders';
   END IF;
   IF p_owner_id IS NULL OR p_client_order_id IS NULL OR length(p_client_order_id) NOT BETWEEN 8 AND 128
-     OR (p_symbol ~ '^[A-Z0-9]{2,20}     OR p_quantity IS NULL OR p_entry_price IS NULL OR p_stop_loss IS NULL OR p_fee_rate IS NULL
+     OR p_symbol IS NULL OR p_symbol !~ '^[A-Z0-9]{2,20}$' OR p_strategy_key IS NULL OR length(trim(p_strategy_key)) = 0
      OR p_quantity <= 0 OR p_entry_price <= 0 OR p_stop_loss <= 0 OR p_stop_loss >= p_entry_price
      OR p_fee_rate < 0 OR p_fee_rate > 0.01
      OR p_quote_at IS NULL OR p_quote_at > now() + interval '5 seconds'
