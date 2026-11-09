@@ -33,6 +33,7 @@ export function TopBar({ onMenu }: { onMenu: () => void }) {
   const health = useExchangeHealth();
   const events = useRiskEvents();
   const binanceOk = health.data ? health.data.binancePublic : null;
+  const krakenPartial = !binanceOk && health.data?.fallbackAvailable === true;
   const alerts = (events.data ?? []).filter((e) => e.severity !== "info").length;
 
   return (
@@ -41,7 +42,7 @@ export function TopBar({ onMenu }: { onMenu: () => void }) {
         <Menu className="h-5 w-5" />
       </Button>
       <div className="flex flex-1 flex-wrap items-center gap-2 overflow-hidden">
-        <Pill ok={binanceOk} label={binanceOk === null ? "Verificando…" : binanceOk ? "Sistema online" : "Dados indisponíveis"} />
+        <Pill ok={krakenPartial ? null : binanceOk} label={binanceOk === null ? "Verificando…" : binanceOk ? "Binance online" : krakenPartial ? "Kraken parcial" : "Dados indisponíveis"} />
         <span className="rounded-sm bg-warning px-2 py-0.5 text-[11px] font-bold uppercase text-warning-foreground">
           Modo {TRADING_LOCKS.TRADING_MODE}
         </span>
