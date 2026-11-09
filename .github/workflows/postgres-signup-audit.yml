@@ -1,0 +1,66 @@
+name: PostgreSQL Signup Audit (Disposable)
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/postgres-signup-audit.yml'
+      - 'tests/postgres/config-audit-signup-*.sql'
+      - 'drizzle/migrations/0000_migration.sql'
+      - 'drizzle/migrations/0001_paper_account_integrity.sql'
+      - 'drizzle/migrations/0003_configuration_audit.sql'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  signup-audit:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: bull_market_signup_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: bull_market_signup_ci
+      PGSSLMODE: disable
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Confirm disposable GitHub Actions database
+        run: |
+          set -euo pipefail
+          test "$PGDATABASE" = bull_market_signup_ci
+          test "$PGHOST" = localhost
+          psql -v ON_ERROR_STOP=1 -Atc "SELECT current_database(), inet_server_addr(), current_user, version()"
+
+      - name: Create synthetic Auth fixture (NO real users)
+        run: psql -v ON_ERROR_STOP=1 -X -f tests/postgres/config-audit-signup-fixture.sql
+
+      - name: Apply original schema migration 0000 to disposable database
+        run: psql -v ON_ERROR_STOP=1 -X -f drizzle/migrations/0000_migration.sql
+
+      - name: Apply original paper account integrity migration 0001
+        run: psql -v ON_ERROR_STOP=1 -X -f drizzle/migrations/0001_paper_account_integrity.sql
+
+      - name: Apply original configuration audit migration 0003
+        run: psql -v ON_ERROR_STOP=1 -X -f drizzle/migrations/0003_configuration_audit.sql
+
+      - name: Assert 15 signup events, RLS, atomic rejection and full rollback
+        run: psql -v ON_ERROR_STOP=1 -X -f tests/postgres/config-audit-signup-rollback.sql
