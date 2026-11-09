@@ -36,6 +36,8 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
       - name: Create disposable schema
         run: psql -v ON_ERROR_STOP=1 -f tests/postgres/paper-buy-fixture.sql
+      - name: Apply production-like database constraints
+        run: psql -v ON_ERROR_STOP=1 -f tests/postgres/paper-buy-production-constraints.sql
       - name: Install transaction function in disposable database
         run: psql -v ON_ERROR_STOP=1 -f drizzle/migrations/0002_atomic_paper_buy.sql
       - name: Verify paper execution SQL contract
