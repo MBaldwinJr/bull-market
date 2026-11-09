@@ -28,7 +28,7 @@ BEGIN
     RAISE EXCEPTION 'Only the backend may execute paper orders';
   END IF;
   IF p_owner_id IS NULL OR p_client_order_id IS NULL OR length(p_client_order_id) NOT BETWEEN 8 AND 128
-     OR p_symbol !~ '^[A-Z0-9]{2,20}$' OR p_strategy_key IS NULL
+     OR p_symbol IS NULL OR p_symbol !~ '^[A-Z0-9]{2,20}$' OR p_strategy_key IS NULL OR length(trim(p_strategy_key)) = 0
      OR p_quantity IS NULL OR p_entry_price IS NULL OR p_stop_loss IS NULL OR p_fee_rate IS NULL
      OR p_quantity <= 0 OR p_entry_price <= 0 OR p_stop_loss <= 0 OR p_stop_loss >= p_entry_price
      OR p_fee_rate < 0 OR p_fee_rate > 0.01
@@ -37,11 +37,11 @@ BEGIN
   THEN RAISE EXCEPTION 'Invalid or stale paper entry'; END IF;
 
   SELECT * INTO STRICT v_account FROM public.paper_accounts
-   WHERE owner_id = p_owner_id AND status = 'active' FOR UPDATE;
+   WHERE owner_id = p_owner_id AND status = 'active' AND source = 'paper' FOR UPDATE;
   SELECT * INTO STRICT v_bot FROM public.bot_config WHERE owner_id = p_owner_id;
   SELECT * INTO STRICT v_limits FROM public.risk_limits WHERE owner_id = p_owner_id;
   IF v_bot.trading_mode IS DISTINCT FROM 'paper' OR v_bot.live_trading_enabled IS DISTINCT FROM false OR v_bot.allow_withdrawals IS DISTINCT FROM false
-     OR v_bot.status IS DISTINCT FROM 'running' OR v_limits.leverage IS DISTINCT FROM 0
+     OR v_bot.status IS DISTINCT FROM 'running' OR v_limits.status IS DISTINCT FROM 'active' OR v_limits.stop_loss_required IS DISTINCT FROM true OR v_limits.leverage IS DISTINCT FROM 0
      OR (v_limits.max_risk_per_trade_pct BETWEEN 0.001 AND 2) IS DISTINCT FROM true
      OR (v_limits.max_daily_loss_pct BETWEEN 0.001 AND 5) IS DISTINCT FROM true
      OR (v_limits.max_open_positions >= 1) IS DISTINCT FROM true
@@ -49,7 +49,7 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM public.assets WHERE owner_id=p_owner_id
      AND symbol=p_symbol AND auto_trade_enabled IS TRUE AND deleted_at IS NULL AND status='active')
      OR NOT EXISTS (SELECT 1 FROM public.trading_strategies WHERE owner_id=p_owner_id
-     AND strategy_key=p_strategy_key AND enabled IS TRUE)
+     AND strategy_key=p_strategy_key AND enabled IS TRUE AND status='active')
   THEN RAISE EXCEPTION 'Asset or strategy not enabled'; END IF;
 
   -- Idempotency is checked under the serialized account lock.
