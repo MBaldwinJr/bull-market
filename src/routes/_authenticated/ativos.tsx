@@ -20,6 +20,7 @@ import { QueryView } from "@/components/trading/state-views";
 import { accountKeys, useAccountMutation, useAssets } from "@/features/account/hooks/use-account";
 import { accountService, type Asset } from "@/features/account/services/account-service";
 import { symbolSchema } from "@/features/account/schemas";
+import { canSetPaperAssetPermission } from "@/features/account/utils/paper-asset-permission";
 import { useCheckSymbol } from "@/features/market/hooks/use-market";
 import { pageHead } from "@/lib/seo";
 
@@ -39,6 +40,11 @@ function AssetsPage() {
     "Ativo adicionado",
   );
   const remove = useAccountMutation((a: Asset) => accountService.removeAsset(a), [accountKeys.assets], "Ativo removido");
+  const permission = useAccountMutation(
+    (a: { asset: Asset; enabled: boolean }) => accountService.setAssetPaperPermission(a.asset, a.enabled),
+    [accountKeys.assets],
+    "Permissão de simulação atualizada",
+  );
 
   const onAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,6 +81,9 @@ function AssetsPage() {
         </form>
       </Panel>
       <Panel title="Lista">
+        <p className="mb-3 text-xs text-muted-foreground">
+          A permissão de auto-trade Paper só pode ser concedida aos pares BTCUSDT e ETHUSDT nesta etapa. Revogar permanece disponível para todos. Autorizar um ativo não envia ordens nem conecta corretoras.
+        </p>
         <QueryView query={assets} isEmpty={(d) => d.length === 0}>
           {(list) => (
             <ul className="divide-y">
@@ -83,9 +92,38 @@ function AssetsPage() {
                   <div>
                     <span className="font-semibold">{a.symbol}</span>
                     <span className="ml-2 text-xs text-muted-foreground">
-                      {a.base_asset}/{a.quote_asset} · auto-trade {a.auto_trade_enabled ? "permitido" : "desligado"}
+                      {a.base_asset}/{a.quote_asset} · auto-trade Paper {a.auto_trade_enabled ? "autorizado" : "desligado"}
                     </span>
                   </div>
+                  <div className="flex shrink-0 items-center gap-1">
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" size="sm"
+                        disabled={permission.isPending || !canSetPaperAssetPermission(a, !a.auto_trade_enabled)}
+                        aria-label={a.auto_trade_enabled ? `Revogar auto-trade Paper para ${a.symbol}` : `Autorizar auto-trade Paper para ${a.symbol}`}>
+                        {a.auto_trade_enabled ? "Revogar Paper" : "Autorizar Paper"}
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>
+                          {a.auto_trade_enabled ? "Revogar autorização" : "Autorizar auto-trade Paper"} — {a.symbol}?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                          {a.auto_trade_enabled
+                            ? "O ativo deixará de ser elegível para novas operações simuladas."
+                            : "Altera somente a permissão do ativo no modo Paper Trading. A autorização poderá ser usada pelo motor automático em uma implantação futura. Não inicia o robô, não ativa estratégias, não envia ordens e não permite dinheiro real."}
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction disabled={permission.isPending}
+                          onClick={() => permission.mutate({ asset: a, enabled: !a.auto_trade_enabled })}>
+                          Confirmar
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button variant="ghost" size="icon" aria-label={`Remover ${a.symbol}`}>
@@ -103,6 +141,7 @@ function AssetsPage() {
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
+                  </div>
                 </li>
               ))}
             </ul>
