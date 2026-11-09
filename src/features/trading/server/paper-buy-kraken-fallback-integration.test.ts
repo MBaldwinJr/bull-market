@@ -40,6 +40,17 @@ describe("Kraken fallback through authenticated paper preparation", () => {
     expect(mock).toHaveBeenCalledTimes(2);
   });
 
+  it("refuses screenshot-scale 0.0000001 BTC preparation at a valid Kraken quote", async () => {
+    vi.stubGlobal("fetch", vi.fn()
+      .mockResolvedValueOnce({ ok: false, status: 403 })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({
+        error: [], result: { XBTUSDT: { c: ["75000", "1"] } },
+      }) }));
+    await expect(prepareAuthenticatedPaperBuy({
+      ...request, quantity: 0.0000001, stopPrice: 0.0000001,
+    }, deps())).rejects.toThrow("Valor simulado inferior ao mínimo de 5 USDT");
+  });
+
   it("fails closed without a usable Binance or Kraken quote", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 403 }));
     await expect(prepareAuthenticatedPaperBuy(request, deps())).rejects.toThrow();
