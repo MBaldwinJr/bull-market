@@ -16,7 +16,7 @@ BEGIN
     BEFORE INSERT ON public.audit_logs
     FOR EACH ROW EXECUTE FUNCTION public.reject_paper_audit_for_test();
   BEGIN
-    PERFORM public.execute_paper_buy(owner,'rollback-order-0001','BTCUSDT','test_strategy',1,50,49.75,0.001,now());
+    PERFORM public.execute_paper_buy(owner,'rollback-order-0001','BTCUSDT','ema',1,50,49.75,0.001,now());
   EXCEPTION WHEN OTHERS THEN
     IF SQLERRM = 'forced audit failure' THEN failed := true;
     ELSE RAISE; END IF;
