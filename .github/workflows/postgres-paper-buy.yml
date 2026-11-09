@@ -44,6 +44,10 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f tests/postgres/paper-buy-constraint-enforcement.sql
       - name: Install transaction function in disposable database
         run: psql -v ON_ERROR_STOP=1 -f drizzle/migrations/0002_atomic_paper_buy.sql
+      - name: Upgrade paper execution SQL to enforce minimum notional (disposable DB only)
+        run: psql -v ON_ERROR_STOP=1 -f drizzle/migrations/0004_paper_buy_min_notional.sql
+      - name: Verify atomic minimum notional rejection and exact 5 USDT boundary
+        run: psql -v ON_ERROR_STOP=1 -f tests/postgres/paper-buy-min-notional.sql
       - name: Verify paper execution SQL contract
         run: psql -v ON_ERROR_STOP=1 -f tests/postgres/paper-buy-contract.sql
       - name: Verify SQL function privileges
