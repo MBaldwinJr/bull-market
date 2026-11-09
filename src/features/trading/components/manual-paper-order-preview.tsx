@@ -1,4 +1,7 @@
 import { useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { preparePaperBuy } from "@/features/trading/services/paper-buy.functions";
+import { useAuth } from "@/features/auth/use-auth";
 import { Input } from "@/components/ui/input";
 import { Panel } from "@/components/trading/panel";
 import { canSubmitManualPaperOrder } from "./manual-paper-order-activation";
@@ -13,6 +16,29 @@ export function ManualPaperOrderPreview() {
   const [stopPrice, setStopPrice] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [strategyKey, setStrategyKey] = useState("ema");
+  const { session } = useAuth();
+  const prepare = useServerFn(preparePaperBuy);
+  const [preflight, setPreflight] = useState<string | null>(null);
+  const [preparing, setPreparing] = useState(false);
+  const canPrepare = /^[A-Z0-9]{2,20}$/.test(symbol) && /^[a-z_]{2,128}$/.test(strategyKey) &&
+    quantity.trim().length > 0 && stopPrice.trim().length > 0 &&
+    Number.isFinite(Number(quantity)) && Number(quantity) > 0 &&
+    Number.isFinite(Number(stopPrice)) && Number(stopPrice) > 0 &&
+    confirmation === "CONFIRMAR COMPRA SIMULADA";
+  const runPreflight = async () => {
+    if (!canPrepare || !session?.access_token || preparing) return;
+    setPreparing(true);
+    setPreflight(null);
+    try {
+      const receipt = await prepare({ data: {
+        clientOrderId: `preflight-${crypto.randomUUID()}`,
+        symbol, strategyKey, quantity: Number(quantity), stopPrice: Number(stopPrice),
+      }, headers: { Authorization: `Bearer ${session.access_token}` } });
+      setPreflight(`Preparação validada, sem execução: ${receipt.symbol}, ${receipt.quantity}, cotação ${receipt.entryPrice} USDT, taxa ${receipt.fee} USDT, débito estimado ${receipt.totalDebit} USDT.`);
+    } catch {
+      setPreflight("Preparação recusada pelo servidor. Verifique conexão, saldo virtual, configurações de risco, ativo e estratégia habilitados.");
+    } finally { setPreparing(false); }
+  };
   const eligible = canSubmitManualPaperOrder({ symbol, quantity, stopPrice, confirmation, strategyKey });
 
   return (
@@ -42,6 +68,10 @@ export function ManualPaperOrderPreview() {
         Cotação, saldo e limites de risco serão verificados pelo servidor na futura ativação.
         Nenhum preço ou valor será enviado a uma corretora.
       </p>
+      <button type="button" onClick={() => void runPreflight()} disabled={!canPrepare || preparing} className="mt-3 mr-2 rounded-md border px-4 py-2 text-sm">
+        {preparing ? "Verificando…" : "Validar compra sem executar"}
+      </button>
+      {preflight ? <p role="status" className="mt-2 text-sm">{preflight}</p> : null}
       <button type="button" disabled={!eligible} className="mt-3 rounded-md border px-4 py-2 text-sm opacity-50" aria-label="Envio de compra simulada desabilitado">
         Envio desabilitado
       </button>
