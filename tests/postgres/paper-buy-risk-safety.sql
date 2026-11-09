@@ -26,7 +26,7 @@ BEGIN
    END CASE;
    rejected := false;
    BEGIN
-     PERFORM public.execute_paper_buy(owner,'unsafe-config-000'||i,'BTCUSDT','test_strategy',1,50,49.75,0.001,now());
+     PERFORM public.execute_paper_buy(owner,'unsafe-config-000'||i,'BTCUSDT','ema',1,50,49.75,0.001,now());
    EXCEPTION WHEN OTHERS THEN rejected := true;
    END;
    IF NOT rejected THEN RAISE EXCEPTION 'Unsafe configuration case % was accepted',i; END IF;
