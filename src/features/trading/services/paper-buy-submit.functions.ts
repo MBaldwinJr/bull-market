@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { createClient } from "@supabase/supabase-js";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { paperBuyRequestSchema } from "./paper-buy-schema";
+import { confirmedPaperBuySchema } from "./paper-buy-confirmation-schema";
 import type { Database } from "@/integrations/supabase/types";
 
 /**
@@ -10,7 +10,7 @@ import type { Database } from "@/integrations/supabase/types";
  */
 export const submitControlledPaperBuy = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => paperBuyRequestSchema.parse(input))
+  .inputValidator((input: unknown) => confirmedPaperBuySchema.parse(input))
   .handler(async ({ data, context }) => {
     if (process.env["PAPER_TRADING_ROUTE_ENABLED"] !== "true") {
       return { status: "execution_disabled" as const, executed: false as const };
@@ -23,7 +23,7 @@ export const submitControlledPaperBuy = createServerFn({ method: "POST" })
     const url = process.env["SUPABASE_URL"];
     const serviceKey = process.env["SUPABASE_SERVICE_ROLE_KEY"];
     if (!url || !serviceKey) throw new Error("Credenciais de servidor indisponíveis");
-    const prepared = await prepareAuthenticatedPaperBuy(data, {
+    const prepared = await prepareAuthenticatedPaperBuy({ clientOrderId: data.clientOrderId, symbol: data.symbol, strategyKey: data.strategyKey, quantity: data.quantity, stopPrice: data.stopPrice }, {
       verifiedUserId: async () => {
         const { data: result, error } = await context.supabase.auth.getUser();
         if (error || !result.user || result.user.id !== context.userId) throw new Error("Sessão inválida");
