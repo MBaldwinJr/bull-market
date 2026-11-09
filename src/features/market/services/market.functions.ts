@@ -1,34 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import type { Candle } from "../utils/indicators";
+import type { PublicTicker } from "../server/public-market-data.server";
 
 // Public market-data mirror of Binance Spot. Only public endpoints: no keys, no orders.
 const BINANCE_PUBLIC = "https://data-api.binance.vision/api/v3";
 const SYMBOL = z.string().regex(/^[A-Z0-9]{2,20}$/);
 
-export interface Ticker {
-  readonly symbol: string;
-  readonly lastPrice: number;
-  readonly changePct: number;
-  readonly high: number;
-  readonly low: number;
-  readonly quoteVolume: number;
-  readonly bid: number;
-  readonly ask: number;
-  readonly spreadPct: number;
-  readonly fetchedAt: number;
-}
-
-interface RawTicker {
-  symbol: string;
-  lastPrice: string;
-  priceChangePercent: string;
-  highPrice: string;
-  lowPrice: string;
-  quoteVolume: string;
-  bidPrice: string;
-  askPrice: string;
-}
+export type Ticker = PublicTicker;
 
 async function getJson(url: string): Promise<unknown> {
   const res = await fetch(url, { headers: { accept: "application/json" }, signal: AbortSignal.timeout(8000) });
@@ -39,50 +18,21 @@ async function getJson(url: string): Promise<unknown> {
 export const getTickers = createServerFn({ method: "GET" })
   .inputValidator((input: unknown) => z.object({ symbols: z.array(SYMBOL).min(1).max(50) }).parse(input))
   .handler(async ({ data }): Promise<Ticker[]> => {
-    const url = `${BINANCE_PUBLIC}/ticker/24hr?symbols=${encodeURIComponent(JSON.stringify(data.symbols))}`;
-    const raw = (await getJson(url)) as RawTicker[];
-    const now = Date.now();
-    return raw.map((t) => {
-      const bid = Number(t.bidPrice);
-      const ask = Number(t.askPrice);
-      const mid = (bid + ask) / 2;
-      return {
-        symbol: t.symbol,
-        lastPrice: Number(t.lastPrice),
-        changePct: Number(t.priceChangePercent),
-        high: Number(t.highPrice),
-        low: Number(t.lowPrice),
-        quoteVolume: Number(t.quoteVolume),
-        bid,
-        ask,
-        spreadPct: mid > 0 ? ((ask - bid) / mid) * 100 : 0,
-        fetchedAt: now,
-      };
-    });
+    const { fetchPublicTickers } = await import("../server/public-market-data.server");
+    return fetchPublicTickers(data.symbols);
   });
 
 export const getCandles = createServerFn({ method: "GET" })
   .inputValidator((input: unknown) =>
-    z
-      .object({
-        symbol: SYMBOL,
-        interval: z.enum(["15m", "1h", "4h", "1d"]).default("1h"),
-        limit: z.number().int().min(30).max(1000).default(300),
-      })
-      .parse(input),
+    z.object({
+      symbol: SYMBOL,
+      interval: z.enum(["15m", "1h", "4h", "1d"]).default("1h"),
+      limit: z.number().int().min(30).max(1000).default(300),
+    }).parse(input),
   )
   .handler(async ({ data }): Promise<Candle[]> => {
-    const url = `${BINANCE_PUBLIC}/klines?symbol=${data.symbol}&interval=${data.interval}&limit=${data.limit}`;
-    const raw = (await getJson(url)) as Array<[number, string, string, string, string, string, number]>;
-    return raw.map((k) => ({
-      openTime: k[0],
-      open: Number(k[1]),
-      high: Number(k[2]),
-      low: Number(k[3]),
-      close: Number(k[4]),
-      volume: Number(k[5]),
-      closeTime: k[6],
-    }));
+    const { fetchPublicCandles } = await import("../server/public-market-data.server");
+    return fetchPublicCandles(data.symbol, data.interval, data.limit);
   });
 
 export const checkExchangeSymbol = createServerFn({ method: "GET" })
