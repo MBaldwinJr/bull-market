@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Panel } from "@/components/trading/panel";
 import { canSubmitManualPaperOrder } from "./manual-paper-order-activation";
 import { MIN_PAPER_BUY_NOTIONAL_USDT } from "../utils/paper-order-policy";
+import { examplePaperBuyFields } from "./paper-safe-example";
 
 const fmtUSDT = (value: number, decimals = 8) => value.toLocaleString("pt-BR", { maximumFractionDigits: decimals });
 const fmtQuantity = (value: number) => value.toLocaleString("pt-BR", { maximumFractionDigits: 10 });
@@ -46,6 +47,21 @@ export function ManualPaperOrderPreview() {
     availableCash: Number(account.data?.cash_balance),
     riskPct: Number(riskLimits.data?.max_risk_per_trade_pct),
   });
+  const example = examplePaperBuyFields({
+    symbol,
+    price: market?.lastPrice ?? null,
+    quoteTimeMs: market?.fetchedAt ?? null,
+    nowMs,
+    initialBalance: Number(account.data?.initial_balance),
+    availableCash: Number(account.data?.cash_balance),
+    riskPct: Number(riskLimits.data?.max_risk_per_trade_pct),
+  });
+  const fillSafeExample = () => {
+    if (!example || preparing) return;
+    setQuantity(example.quantity);
+    setStopPrice(example.stopPrice);
+    // Do not autofill user confirmation or send any request.
+  };
   const readiness = assessPaperPreflightReadiness({
     symbol, strategyKey,
     account: account.data,
@@ -117,7 +133,7 @@ export function ManualPaperOrderPreview() {
         <label className="text-sm">Quantidade simulada
           <Input className="mt-1" type="number" min="0" step="any" value={quantity} onChange={(e) => setQuantity(e.target.value)} />
         </label>
-        <label className="text-sm">Stop-loss (preço do BTC em USDT, não porcentagem)
+        <label className="text-sm">Stop-loss (preço do ativo em USDT, não porcentagem)
           <Input className="mt-1" type="number" min="0" step="any" value={stopPrice}
             onChange={(e) => setStopPrice(e.target.value)} placeholder="Informe o preço de saída" />
         </label>
@@ -129,10 +145,20 @@ export function ManualPaperOrderPreview() {
             placeholder="CONFIRMAR COMPRA SIMULADA" autoComplete="off" />
         </label>
       </div>
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <button type="button" onClick={fillSafeExample} disabled={!example || preparing}
+          className="rounded-md border px-4 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50">
+          Preencher exemplo de teste
+        </button>
+        <p className="text-xs text-muted-foreground">
+          Calcula somente quantidade e stop-loss a partir de cotação recente, saldo e risco.
+          Não preenche a confirmação, não executa ordens nem configura o robô.
+        </p>
+      </div>
       <div className="mt-3 rounded-md border p-3 text-sm" role="status" aria-live="polite">
         <p className="font-medium">Estimativa de risco (somente leitura)</p>
         <p className="mt-1 text-xs text-muted-foreground">
-          O stop-loss é o preço de saída de 1 BTC em USDT. Não digite a quantidade de BTC nem um percentual.
+          O stop-loss é o preço de saída de uma unidade do ativo em USDT. Não digite quantidade nem percentual.
         </p>
         {indicative.status === "unavailable" ? (
           <p className="mt-2 text-xs">{indicative.reason}</p>
