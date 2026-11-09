@@ -44,6 +44,8 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f tests/postgres/paper-buy-contract.sql
       - name: Verify SQL function privileges
         run: psql -v ON_ERROR_STOP=1 -f tests/postgres/paper-buy-privileges.sql
+      - name: Reject unsafe risk and bot configurations
+        run: psql -v ON_ERROR_STOP=1 -f tests/postgres/paper-buy-risk-safety.sql
       - name: Reject invalid inputs without side effects
         run: psql -v ON_ERROR_STOP=1 -f tests/postgres/paper-buy-invalid-inputs.sql
       - name: Verify rollback after a forced audit failure
