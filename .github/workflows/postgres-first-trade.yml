@@ -1,0 +1,38 @@
+name: PostgreSQL First Trade Integrity
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  first-trade:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: paper_trigger_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: paper_trigger_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Create disposable schema
+        run: psql -v ON_ERROR_STOP=1 -f tests/postgres/first-trade-fixture.sql
+      - name: Install first-trade migration
+        run: psql -v ON_ERROR_STOP=1 -f drizzle/migrations/0001_paper_account_integrity.sql
+      - name: Verify first-trade integrity
+        run: psql -v ON_ERROR_STOP=1 -f tests/postgres/first-trade-integration.sql
