@@ -12,12 +12,12 @@ BEGIN
    rejected := false;
    BEGIN
      CASE i
-       WHEN 1 THEN PERFORM public.execute_paper_buy(owner,'short','BTCUSDT','test_strategy',1,50,49.75,0.001,now());
-       WHEN 2 THEN PERFORM public.execute_paper_buy(owner,repeat('x',129),'BTCUSDT','test_strategy',1,50,49.75,0.001,now());
-       WHEN 3 THEN PERFORM public.execute_paper_buy(owner,'bad-symbol-03','btcUSDT','test_strategy',1,50,49.75,0.001,now());
-       WHEN 4 THEN PERFORM public.execute_paper_buy(owner,'bad-symbol-04','BTC-USDT','test_strategy',1,50,49.75,0.001,now());
-       WHEN 5 THEN PERFORM public.execute_paper_buy(owner,'bad-symbol-05','B','test_strategy',1,50,49.75,0.001,now());
-       WHEN 6 THEN PERFORM public.execute_paper_buy(owner,'bad-symbol-06',repeat('B',21),'test_strategy',1,50,49.75,0.001,now());
+       WHEN 1 THEN PERFORM public.execute_paper_buy(owner,'short','BTCUSDT','ema',1,50,49.75,0.001,now());
+       WHEN 2 THEN PERFORM public.execute_paper_buy(owner,repeat('x',129),'BTCUSDT','ema',1,50,49.75,0.001,now());
+       WHEN 3 THEN PERFORM public.execute_paper_buy(owner,'bad-symbol-03','btcUSDT','ema',1,50,49.75,0.001,now());
+       WHEN 4 THEN PERFORM public.execute_paper_buy(owner,'bad-symbol-04','BTC-USDT','ema',1,50,49.75,0.001,now());
+       WHEN 5 THEN PERFORM public.execute_paper_buy(owner,'bad-symbol-05','B','ema',1,50,49.75,0.001,now());
+       WHEN 6 THEN PERFORM public.execute_paper_buy(owner,'bad-symbol-06',repeat('B',21),'ema',1,50,49.75,0.001,now());
        WHEN 7 THEN PERFORM public.execute_paper_buy(owner,'bad-strategy-07','BTCUSDT','   ',1,50,49.75,0.001,now());
      END CASE;
    EXCEPTION WHEN OTHERS THEN rejected := true;
