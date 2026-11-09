@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { ManualPaperOrderPreview } from "@/features/trading/components/manual-paper-order-preview";
 import { PageHeader, Panel, SimulationBadge } from "@/components/trading/panel";
 import { DistributionChart, PerformanceChart, PnlBarChart } from "@/components/trading/charts";
 import { ErrorState, LoadingState } from "@/components/trading/state-views";
@@ -50,6 +51,7 @@ export function DashboardPage() {
         actions={<EmergencyStop />}
       />
       <MarketTicker />
+      <div className="mb-4"><ManualPaperOrderPreview /></div>
       {error ? (
         <ErrorState error={error} onRetry={() => void account.refetch()} />
       ) : !metrics ? (
