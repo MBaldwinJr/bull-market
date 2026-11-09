@@ -102,9 +102,12 @@ export interface ExchangeHealth {
   readonly checkedAt: number;
   readonly failureReason?: "timeout" | "network" | "http_error" | "invalid_response";
   readonly httpStatus?: number;
+  readonly fallbackAvailable?: boolean;
+  readonly fallbackSource?: "kraken_public";
 }
 
 export const getExchangeHealth = createServerFn({ method: "GET" }).handler(async (): Promise<ExchangeHealth> => {
+  const { fetchPublicSpotQuote } = await import("../server/public-spot-quote.server");
   const start = Date.now();
   try {
     // A successful ping alone is insufficient: trading requires valid prices.
@@ -114,10 +117,18 @@ export const getExchangeHealth = createServerFn({ method: "GET" }).handler(async
       cache: "no-store",
     });
     const latencyMs = Date.now() - start;
-    if (!res.ok) return {
-      binancePublic: false, latencyMs, checkedAt: Date.now(),
-      failureReason: "http_error", httpStatus: res.status,
-    };
+    if (!res.ok) {
+      let fallbackAvailable = false;
+      try {
+        const quote = await fetchPublicSpotQuote("BTCUSDT");
+        fallbackAvailable = quote.source === "kraken_public" && quote.price > 0;
+      } catch { /* Fail closed: public prices unavailable. */ }
+      return {
+        binancePublic: false, latencyMs, checkedAt: Date.now(),
+        failureReason: "http_error", httpStatus: res.status,
+        fallbackAvailable, ...(fallbackAvailable ? { fallbackSource: "kraken_public" as const } : {}),
+      };
+    }
     const payload: unknown = await res.json();
     const valid = Boolean(payload && typeof payload === "object" &&
       (payload as Record<string, unknown>)["symbol"] === "BTCUSDT" &&
