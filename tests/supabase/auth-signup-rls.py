@@ -79,7 +79,7 @@ def rows(table, key, bearer=None, filter_query=""):
 
 def sign_up(name):
     password = secrets.token_urlsafe(32) + "Aa1!"
-    email = f"ci-{name}-{secrets.token_hex(6)}@example.invalid"
+    email = f"ci-{name.lower().replace(' ', '-')}-{secrets.token_hex(6)}@example.invalid"
     result = call("POST", "/auth/v1/signup", ANON_KEY, payload={
         "email": email, "password": password, "data": {"display_name": name}
     })
