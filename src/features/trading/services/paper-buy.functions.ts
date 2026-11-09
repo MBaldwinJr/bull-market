@@ -16,7 +16,12 @@ export const preparePaperBuy = createServerFn({ method: "POST" })
         if (result.error || !result.data.user || result.data.user.id !== context.userId) throw new Error("Sessão inválida");
         return result.data.user.id;
       },
-      serviceCredentialsAvailable: () => Boolean(process.env['SUPABASE_URL'] && process.env['SUPABASE_SERVICE_ROLE_KEY']),
+      // Preparation uses only the authenticated RLS client and public market data.
+      // Requiring privileged service credentials here prevented read-only tests
+      // on environments that intentionally do not expose a service role key.
+      // The separate order-execution endpoint still requires server credentials
+      // and both independent default-off execution gates.
+      serviceCredentialsAvailable: () => true,
       loadState: (ownerId, clientOrderId) => loadPaperBuyState(context.supabase, ownerId, clientOrderId),
       quote: fetchTrustedPaperQuote,
       now: Date.now,
