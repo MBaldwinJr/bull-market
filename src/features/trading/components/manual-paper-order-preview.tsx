@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { preparePaperBuy } from "@/features/trading/services/paper-buy.functions";
 import { useAuth } from "@/features/auth/use-auth";
 import { useAssets, useBotConfig, usePaperAccount, useRiskLimits, useStrategies } from "@/features/account/hooks/use-account";
+import { useTickers } from "@/features/market/hooks/use-market";
+import { estimatePaperRisk } from "./indicative-paper-risk";
 import { assessPaperPreflightReadiness } from "./paper-preflight-readiness";
 import { Input } from "@/components/ui/input";
 import { Panel } from "@/components/trading/panel";
@@ -18,12 +20,28 @@ export function ManualPaperOrderPreview() {
   const [stopPrice, setStopPrice] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [strategyKey, setStrategyKey] = useState("ema");
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNowMs(Date.now()), 10_000);
+    return () => clearInterval(id);
+  }, []);
   const { session } = useAuth();
   const account = usePaperAccount();
   const bot = useBotConfig();
   const riskLimits = useRiskLimits();
   const assets = useAssets();
   const strategies = useStrategies();
+  const tickers = useTickers([symbol]);
+  const market = tickers.data?.find((ticker) => ticker.symbol === symbol);
+  const indicative = estimatePaperRisk({
+    price: market?.lastPrice ?? null,
+    quoteTimeMs: market?.fetchedAt ?? null,
+    nowMs,
+    quantity: Number(quantity), stopPrice: Number(stopPrice),
+    initialBalance: Number(account.data?.initial_balance),
+    availableCash: Number(account.data?.cash_balance),
+    riskPct: Number(riskLimits.data?.max_risk_per_trade_pct),
+  });
   const readiness = assessPaperPreflightReadiness({
     symbol, strategyKey,
     account: account.data,
@@ -35,7 +53,7 @@ export function ManualPaperOrderPreview() {
   const prepare = useServerFn(preparePaperBuy);
   const [preflight, setPreflight] = useState<string | null>(null);
   const [preparing, setPreparing] = useState(false);
-  const canPrepare = readiness.status === "preflight_checkable" && /^[A-Z0-9]{2,20}$/.test(symbol) && /^[a-z_]{2,128}$/.test(strategyKey) &&
+  const canPrepare = indicative.status === "within_limit" && readiness.status === "preflight_checkable" && /^[A-Z0-9]{2,20}$/.test(symbol) && /^[a-z_]{2,128}$/.test(strategyKey) &&
     quantity.trim().length > 0 && stopPrice.trim().length > 0 &&
     Number.isFinite(Number(quantity)) && Number(quantity) > 0 &&
     Number.isFinite(Number(stopPrice)) && Number(stopPrice) > 0 &&
@@ -50,8 +68,19 @@ export function ManualPaperOrderPreview() {
         symbol, strategyKey, quantity: Number(quantity), stopPrice: Number(stopPrice),
       }, headers: { Authorization: `Bearer ${session.access_token}` } });
       setPreflight(`Preparação validada, sem execução: ${receipt.symbol}, ${receipt.quantity}, cotação ${receipt.entryPrice} USDT, taxa ${receipt.fee} USDT, débito estimado ${receipt.totalDebit} USDT.`);
-    } catch {
-      setPreflight("Preparação recusada pelo servidor. Verifique conexão, saldo virtual, configurações de risco, ativo e estratégia habilitados.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "";
+      const safeReasons = [
+        "Risco por operação excedido", "Stop-loss obrigatório abaixo da entrada",
+        "Saldo insuficiente; alavancagem proibida", "Saldo insuficiente para taxa e compra",
+        "Cotação indisponível ou desatualizada", "Robô não está em execução",
+        "Ativo não autorizado", "Estratégia não autorizada", "Limite de posições atingido",
+        "Limite de perda diária atingido",
+      ];
+      const safeReason = safeReasons.find((reason) => message.includes(reason));
+      setPreflight(safeReason
+        ? `Preparação recusada: ${safeReason}. Nenhuma ordem executada.`
+        : "A validação do servidor não foi concluída. Confira sua sessão, os dados de mercado e a configuração de Paper Trading. Nenhuma ordem executada.");
     } finally { setPreparing(false); }
   };
   const eligible = canSubmitManualPaperOrder({ symbol, quantity, stopPrice, confirmation, strategyKey });
@@ -79,8 +108,9 @@ export function ManualPaperOrderPreview() {
         <label className="text-sm">Quantidade simulada
           <Input className="mt-1" type="number" min="0" step="any" value={quantity} onChange={(e) => setQuantity(e.target.value)} />
         </label>
-        <label className="text-sm">Stop-loss (USDT)
-          <Input className="mt-1" type="number" min="0" step="any" value={stopPrice} onChange={(e) => setStopPrice(e.target.value)} />
+        <label className="text-sm">Stop-loss (preço do BTC em USDT, não porcentagem)
+          <Input className="mt-1" type="number" min="0" step="any" value={stopPrice}
+            onChange={(e) => setStopPrice(e.target.value)} placeholder="Informe o preço de saída" />
         </label>
         <label className="text-sm">Estratégia
           <Input className="mt-1" value={strategyKey} onChange={(e) => setStrategyKey(e.target.value)} maxLength={128} />
@@ -89,6 +119,32 @@ export function ManualPaperOrderPreview() {
           <Input className="mt-1" value={confirmation} onChange={(e) => setConfirmation(e.target.value)}
             placeholder="CONFIRMAR COMPRA SIMULADA" autoComplete="off" />
         </label>
+      </div>
+      <div className="mt-3 rounded-md border p-3 text-sm" role="status" aria-live="polite">
+        <p className="font-medium">Estimativa de risco (somente leitura)</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          O stop-loss é o preço de saída de 1 BTC em USDT. Não digite a quantidade de BTC nem um percentual.
+        </p>
+        {indicative.status === "unavailable" ? (
+          <p className="mt-2 text-xs">{indicative.reason}</p>
+        ) : (
+          <>
+            <p className="mt-2">Preço de referência: {indicative.entry.toLocaleString("pt-BR", { maximumFractionDigits: 4 })} USDT
+              {" · "}Fonte: {market?.source === "kraken_public" ? "Kraken" : "Binance"}
+            </p>
+            <p>Risco estimado até o stop: {indicative.risk.toLocaleString("pt-BR", { maximumFractionDigits: 4 })} USDT
+              {" · "}Limite: {indicative.riskLimit.toLocaleString("pt-BR", { maximumFractionDigits: 4 })} USDT
+            </p>
+            <p>Stop mínimo aproximado para o limite atual: {
+              indicative.lowestStop.toLocaleString("pt-BR", { maximumFractionDigits: 4 })
+            } USDT (sempre abaixo do preço de entrada).</p>
+            <p className={indicative.status === "rejected" ? "mt-2 text-loss" : "mt-2 text-gain"}>
+              {indicative.reason}
+            </p>
+          </>
+        )}
+        <p className="mt-2 text-xs text-muted-foreground">Estimativa local com preço público; não garante aprovação.
+          O servidor consulta novamente a cotação e os limites antes de validar.</p>
       </div>
       <p className="mt-3 text-xs text-muted-foreground">
         A pré-verificação não substitui a validação no servidor. A cotação, o saldo e o risco serão reavaliados no teste sem executar.
