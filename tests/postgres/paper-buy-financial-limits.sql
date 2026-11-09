@@ -21,10 +21,10 @@ BEGIN
    END IF;
    BEGIN
      CASE i
-       WHEN 1 THEN PERFORM public.execute_paper_buy(owner,'finance-limit-01','BTCUSDT','test_strategy',3,50,49.99,0.001,now());
-       WHEN 2 THEN PERFORM public.execute_paper_buy(owner,'finance-limit-02','BTCUSDT','test_strategy',1,50,49,0.001,now());
-       WHEN 3 THEN PERFORM public.execute_paper_buy(owner,'finance-limit-03','BTCUSDT','test_strategy',1,50,49.99,0.001,now());
-       WHEN 4 THEN PERFORM public.execute_paper_buy(owner,'finance-limit-04','BTCUSDT','test_strategy',1,50,49.99,0.001,now());
+       WHEN 1 THEN PERFORM public.execute_paper_buy(owner,'finance-limit-01','BTCUSDT','ema',3,50,49.99,0.001,now());
+       WHEN 2 THEN PERFORM public.execute_paper_buy(owner,'finance-limit-02','BTCUSDT','ema',1,50,49,0.001,now());
+       WHEN 3 THEN PERFORM public.execute_paper_buy(owner,'finance-limit-03','BTCUSDT','ema',1,50,49.99,0.001,now());
+       WHEN 4 THEN PERFORM public.execute_paper_buy(owner,'finance-limit-04','BTCUSDT','ema',1,50,49.99,0.001,now());
      END CASE;
    EXCEPTION WHEN OTHERS THEN rejected := true;
    END;
