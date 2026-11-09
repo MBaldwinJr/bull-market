@@ -30,6 +30,11 @@ export function BinanceHealthDiagnostic() {
           <p className="text-destructive">Cotação pública indisponível. Compras bloqueadas.</p>
           <p>{data?.failureReason ? reasons[data.failureReason] : "Falha não classificada."}</p>
           {data?.httpStatus ? <p>Código HTTP: {data.httpStatus}</p> : null}
+          {data?.fallbackAvailable ? (
+            <p className="text-gain">Cotação alternativa BTC/USDT disponível via Kraken (somente diagnóstico). A negociação continua bloqueada.</p>
+          ) : data?.failureReason === "http_error" ? (
+            <p>Fonte alternativa ainda não confirmada neste ambiente.</p>
+          ) : null}
         </div>
       )}
       <p className="mt-2 text-xs text-muted-foreground">
