@@ -19,7 +19,7 @@ BEGIN
      WHEN 1 THEN UPDATE public.bot_config SET status='stopped' WHERE owner_id=owner;
      WHEN 2 THEN UPDATE public.bot_config SET trading_mode='testnet' WHERE owner_id=owner;
      WHEN 3 THEN UPDATE public.risk_limits SET status='inactive' WHERE owner_id=owner;
-     WHEN 4 THEN UPDATE public.risk_limits SET max_open_positions=0 WHERE owner_id=owner;
+     WHEN 4 THEN UPDATE public.risk_limits SET max_open_positions=NULL WHERE owner_id=owner;
      WHEN 5 THEN UPDATE public.trading_strategies SET enabled=false WHERE owner_id=owner;
      WHEN 6 THEN UPDATE public.assets SET auto_trade_enabled=false WHERE owner_id=owner;
      WHEN 7 THEN UPDATE public.risk_limits SET max_risk_per_trade_pct=NULL WHERE owner_id=owner;
