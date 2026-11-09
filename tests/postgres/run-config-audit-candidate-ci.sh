@@ -40,7 +40,7 @@ SELECT md5(
    FROM pg_proc p
    WHERE p.oid='public.audit_configuration_change()'::regprocedure)
   || '|'
-  || (SELECT string_agg(t.oid::text||':'||t.xmin::text||':'||pg_get_triggerdef(t.oid)||':'||t.tgenabled,'|' ORDER BY t.tgname)
+  || (SELECT string_agg(t.oid::text||':'||t.xmin::text||':'||pg_get_triggerdef(t.oid)||':'||t.tgenabled::text,'|' ORDER BY t.tgname)
       FROM pg_trigger t
       WHERE t.tgname LIKE 'trg_audit_%' AND NOT t.tgisinternal)
 );
