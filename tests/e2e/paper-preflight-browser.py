@@ -15,6 +15,8 @@ from urllib.parse import urlsplit
 from playwright.sync_api import sync_playwright, expect
 
 APP = "http://127.0.0.1:4173"
+PHASE = "not_started"
+SAFE_UI = ""
 LOCAL_API = "http://127.0.0.1:54321"
 
 
@@ -52,6 +54,8 @@ def assert_unmodified(service_key, owner_id):
 
 
 def browser_test():
+    global PHASE, SAFE_UI
+    PHASE = "starting_browser"
     credentials = json.loads(Path(os.environ["E2E_FIXTURE_FILE"]).read_text())
     service_key = read_env()
     owner_id = credentials["user_id"]
@@ -70,13 +74,20 @@ def browser_test():
             return route.continue_()
 
         context.route("**/*", block_external)
+        PHASE = "opening_auth_page"
         page.goto("/auth", wait_until="domcontentloaded", timeout=60000)
         page.locator("#email").fill(credentials["email"])
         page.locator("#password").fill(credentials["password"])
+        PHASE = "submitting_auth_login"
         page.get_by_role("button", name="Entrar", exact=True).click()
 
         # Auth happens through the real local Supabase GoTrue HTTP service.
-        expect(page.get_by_text("Compra simulada — preparação")).to_be_visible(timeout=45000)
+        PHASE = "waiting_for_dashboard"
+        try:
+            expect(page.get_by_text("Compra simulada — preparação")).to_be_visible(timeout=45000)
+        except Exception:
+            SAFE_UI = "current_route=" + urlsplit(page.url).path + ", login_visible=" + str(page.get_by_role("button", name="Entrar", exact=True).count()) + ", dashboard_heading=" + str(page.get_by_text("Dashboard", exact=True).count())
+            raise
         send = page.get_by_role("button", name="Envio desabilitado")
         expect(send).to_be_disabled()
 
@@ -87,17 +98,24 @@ def browser_test():
         page.get_by_label("Confirmação").fill("CONFIRMAR COMPRA SIMULADA")
 
         verify = page.get_by_role("button", name="Validar compra sem executar")
-        expect(verify).to_be_enabled(timeout=45000)
+        PHASE = "waiting_for_readiness"
+        try:
+            expect(verify).to_be_enabled(timeout=45000)
+        except Exception:
+            SAFE_UI = "current_route=" + urlsplit(page.url).path + ", ready_count=" + str(page.get_by_text("Configurações básicas presentes.", exact=False).count()) + ", blocked_count=" + str(page.get_by_text("não está", exact=False).count()) + ", preflight_button=" + str(verify.count())
+            raise
 
         def on_response(response):
             if response.request.method == "POST" and response.url.startswith(APP + "/"):
                 post_urls.append(response)
 
         page.on("response", on_response)
+        PHASE = "calling_prepared_only_http"
         verify.click()
         expect(page.get_by_text(re.compile("Preparação validada, sem execução:"))).to_be_visible(timeout=40000)
         expect(send).to_be_disabled()
 
+        PHASE = "verifying_http_receipt"
         check(post_urls, "No same-origin HTTP POST observed from browser preflight")
         check(any("prepared_only" in response.text() for response in post_urls),
               "Server did not return a prepared_only receipt over HTTP")
@@ -120,6 +138,6 @@ if __name__ == "__main__":
         browser_test()
     except Exception as exc:
         # Test credentials and tokens are never printed.
-        print("FAIL: localhost-only browser preflight: " + type(exc).__name__ +
-              " (check private CI job logs for safe diagnostics)", file=sys.stderr)
+        print("FAIL: localhost-only browser preflight: phase=" + PHASE +
+              ", error_type=" + type(exc).__name__ + ", " + SAFE_UI, file=sys.stderr)
         raise SystemExit(1) from None
