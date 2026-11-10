@@ -162,8 +162,10 @@ def assert_rejected(result, message):
 
 
 def main():
-    for table in ("paper_accounts", "paper_orders", "paper_positions", "audit_logs"):
-        require(rows(table, SERVICE) == [], f"Local fixture not empty: {table}")
+    # Existing Auth/RLS tests may have created harmless paper accounts here.
+    # Require ZERO trading activity before this transaction test begins.
+    for table in ("paper_orders", "paper_positions", "audit_logs"):
+        require(rows(table, SERVICE) == [], f"Local fixture has trade activity: {table}")
 
     owner_a, jwt_a = signup("a")
     owner_b, jwt_b = signup("b")
