@@ -1,0 +1,162 @@
+name: Paper Preflight HTTP E2E (local only)
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/paper-preflight-http-e2e.yml'
+      - 'tests/e2e/**'
+      - 'src/features/trading/**'
+      - 'src/features/auth/**'
+      - 'src/integrations/supabase/**'
+      - 'src/routes/**'
+      - 'drizzle/migrations/**'
+      - 'vite.config.ts'
+  workflow_dispatch:
+
+# No project secrets, deployments, remote Supabase access or production credentials.
+permissions:
+  contents: read
+
+jobs:
+  browser-local-preflight:
+    name: Real browser + server HTTP + local Supabase Auth
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: "54322"
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: postgres
+      BULL_MARKET_LOCAL_HTTP_E2E: "1"
+      PAPER_TRADING_ROUTE_ENABLED: "false"
+      PAPER_TRADING_EXECUTION_ENABLED: "false"
+      SUPABASE_LOCAL_ENV_FILE: /tmp/bull-market-http-supabase.env
+      E2E_FIXTURE_FILE: /tmp/bull-market-http-test-credentials.json
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - uses: supabase/setup-cli@v3
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install local test tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+          python3 -m pip install 'playwright==1.57.0'
+          python3 -m playwright install --with-deps chromium
+          bun install --frozen-lockfile
+
+      - name: Start throwaway Supabase Auth and PostgreSQL
+        run: |
+          supabase start -x studio,realtime,storage-api,imgproxy,postgres-meta,edge-runtime,logflare,vector,supavisor
+          supabase status -o env > "$SUPABASE_LOCAL_ENV_FILE"
+          chmod 600 "$SUPABASE_LOCAL_ENV_FILE"
+
+      - name: Pin both backend and frontend to local Supabase
+        run: |
+          python3 - <<'PY' >> "$GITHUB_ENV"
+          import os
+          from urllib.parse import urlsplit
+          data = {}
+          for line in open(os.environ["SUPABASE_LOCAL_ENV_FILE"]):
+              if "=" not in line or line.startswith("#"):
+                  continue
+              key, value = line.split("=", 1)
+              data[key.strip()] = value.strip().strip('"').strip("'")
+          url = data.get("API_URL", "")
+          parsed = urlsplit(url)
+          if parsed.scheme != "http" or parsed.hostname not in ("localhost", "127.0.0.1") or parsed.port != 54321:
+              raise SystemExit("Refusing a non-local backend")
+          anon = data.get("ANON_KEY") or data.get("PUBLISHABLE_KEY")
+          if not anon:
+              raise SystemExit("Missing locally generated public key")
+          # Never export a service key into the application process.
+          for name, value in {
+              "SUPABASE_URL": "http://127.0.0.1:54321",
+              "SUPABASE_PUBLISHABLE_KEY": anon,
+              "VITE_SUPABASE_URL": "http://127.0.0.1:54321",
+              "VITE_SUPABASE_PUBLISHABLE_KEY": anon,
+              "VITE_SUPABASE_PROJECT_ID": "isolated-http-ci",
+          }.items():
+              print(name + "=" + value)
+          PY
+
+      - name: Install real migrations only on local Postgres
+        run: |
+          for migration in \
+            drizzle/migrations/0000_migration.sql \
+            drizzle/migrations/0001_paper_account_integrity.sql \
+            drizzle/migrations/0002_atomic_paper_buy.sql \
+            drizzle/migrations/0004_paper_buy_min_notional.sql
+          do
+            psql -v ON_ERROR_STOP=1 -f "$migration" >/dev/null
+          done
+          psql -v ON_ERROR_STOP=1 -c "NOTIFY pgrst, 'reload schema';"
+
+      - name: Create a disposable signed-in user and safe paper-only fixture
+        run: python3 tests/e2e/local-paper-fixture.py
+
+      - name: Start real app HTTP server with LOCAL quote interception
+        run: |
+          export NODE_OPTIONS="--require=$(pwd)/tests/e2e/local-market-only-fetch.cjs"
+          node node_modules/vite/bin/vite.js --host 127.0.0.1 --port 4173 --strictPort > "$RUNNER_TEMP/bull-market-vite-e2e.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/bull-market-vite-e2e.pid"
+          for attempt in $(seq 1 90); do
+            if curl --silent --fail --max-time 4 http://127.0.0.1:4173/auth > /dev/null; then
+              echo "App HTTP ready on localhost"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "App did not become healthy on local HTTP"
+          exit 1
+
+      - name: Sign in via browser and verify prepared_only response over actual HTTP
+        run: python3 tests/e2e/paper-preflight-browser.py
+
+      - name: Verify zero orders and preserve execution gate defaults
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import urllib.request
+          from pathlib import Path
+          data={}
+          for line in open(os.environ['SUPABASE_LOCAL_ENV_FILE']):
+              if '=' in line and not line.startswith('#'):
+                  k,v=line.split('=',1);data[k.strip()]=v.strip().strip('"').strip("'")
+          service=data.get('SERVICE_ROLE_KEY') or data.get('SECRET_KEY')
+          assert service, 'Local service credential missing'
+          assert os.environ.get('PAPER_TRADING_ROUTE_ENABLED') == 'false'
+          assert os.environ.get('PAPER_TRADING_EXECUTION_ENABLED') == 'false'
+          for table in ('paper_orders','paper_positions','audit_logs'):
+              req=urllib.request.Request('http://127.0.0.1:54321/rest/v1/'+table+'?select=id',
+                headers={'apikey':service,'Authorization':'Bearer '+service})
+              with urllib.request.urlopen(req,timeout=20) as res:
+                  assert json.loads(res.read()) == [], 'Unexpected activity in '+table
+          print('PASS: database remains without orders, positions or audit entries')
+          PY
+          node scripts/check-paper-execution-locked.mjs
+
+      - name: Destroy disposable app, credentials and local Supabase volumes
+        if: always()
+        run: |
+          if [ -f "$RUNNER_TEMP/bull-market-vite-e2e.pid" ]; then
+            kill "$(cat "$RUNNER_TEMP/bull-market-vite-e2e.pid")" || true
+          fi
+          rm -f "$SUPABASE_LOCAL_ENV_FILE" "$E2E_FIXTURE_FILE"
+          supabase stop --no-backup || true
