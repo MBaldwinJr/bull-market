@@ -29,7 +29,7 @@ vi.mock("@supabase/supabase-js", () => ({ createClient: vi.fn(() => ({ rpc })) }
 vi.mock("../server/paper-buy-repository.server", () => ({ loadPaperBuyState: vi.fn() }));
 vi.mock("../server/trusted-paper-quote", () => ({ fetchTrustedPaperQuote: vi.fn() }));
 
-const REF = "stagingreference12345";
+const REF = "yawdfupednxlicfogwxp";
 const URL = `https://${REF}.supabase.co`;
 const OWNER = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const environment = {
