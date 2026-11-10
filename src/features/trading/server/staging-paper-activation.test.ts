@@ -6,7 +6,7 @@ import {
   assertHomologationPaperOrder,
 } from "./staging-paper-activation.server";
 
-const REF = "stagingreference12345";
+const REF = "yawdfupednxlicfogwxp";
 const STAGING_URL = `https://${REF}.supabase.co`;
 const approved: Record<string, string> = {
   BULL_MARKET_ENVIRONMENT: "homologacao",
