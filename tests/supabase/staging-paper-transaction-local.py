@@ -32,7 +32,7 @@ def local_env():
     # this test will ever contact is the Docker Supabase stack on localhost.
     anon = values.get("ANON_KEY") or values.get("PUBLISHABLE_KEY")
     service = values.get("SERVICE_ROLE_KEY") or values.get("SECRET_KEY")
-    require(bool(anon), "Missing locally-generated public key")
+    require(bool(anon), "Missing locally-generated public key. Available CLI variable names: " + ", ".join(sorted(values.keys())))
     require(bool(service), "Missing locally-generated service key")
     require(anon != service, "Local public and service keys are identical")
     return "http://127.0.0.1:54321", anon, service
