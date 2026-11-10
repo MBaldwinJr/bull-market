@@ -106,7 +106,8 @@ def browser_test():
                        + ", page_errors=" + str(app_console_error_count[0])
                        + ", js_responses=" + str(len(js_responses)))
             raise
-        send = page.get_by_role("button", name="Envio desabilitado")
+        PHASE = "checking_disabled_submit"
+        send = page.get_by_role("button", name="Envio de compra simulada desabilitado")
         expect(send).to_be_disabled()
 
         page.get_by_label("Par", exact=True).fill("BTCUSDT")
