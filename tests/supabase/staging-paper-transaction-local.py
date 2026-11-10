@@ -26,8 +26,9 @@ def local_env():
     values = {}
     for line in Path(os.environ["SUPABASE_LOCAL_ENV_FILE"]).read_text().splitlines():
         if "=" not in line or line.lstrip().startswith("#"):
-            name, value = line.split("=", 1)
-            values[name.strip()] = value.strip().strip("'\"")
+            continue
+        name, value = line.split("=", 1)
+        values[name.strip()] = value.strip().strip("'\\\"")
     # Deliberately ignore any supplied server URL: the only network destination
     # this test will ever contact is the Docker Supabase stack on localhost.
     anon = values.get("ANON_KEY") or values.get("PUBLISHABLE_KEY")
