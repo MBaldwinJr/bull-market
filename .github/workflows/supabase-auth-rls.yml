@@ -124,6 +124,11 @@ jobs:
           chmod 600 /tmp/supabase-auth-ci.env
           python3 tests/supabase/auth-signup-rls.py
 
+      - name: Verify one persisted simulated BUY on the SAME disposable Auth database
+        env:
+          SUPABASE_LOCAL_ENV_FILE: /tmp/supabase-auth-ci.env
+        run: python3 tests/supabase/staging-paper-transaction-local.py
+
       - name: Destroy disposable local Supabase containers and volumes
         if: always()
         run: supabase stop --no-backup || true

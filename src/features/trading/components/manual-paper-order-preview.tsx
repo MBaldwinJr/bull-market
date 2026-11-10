@@ -1,14 +1,17 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { preparePaperBuy } from "@/features/trading/services/paper-buy.functions";
+import { submitControlledPaperBuy } from "@/features/trading/services/paper-buy-submit.functions";
 import { useAuth } from "@/features/auth/use-auth";
-import { useAssets, useBotConfig, usePaperAccount, useRiskLimits, useStrategies } from "@/features/account/hooks/use-account";
+import { accountKeys, useAssets, useBotConfig, usePaperAccount, useRiskLimits, useStrategies } from "@/features/account/hooks/use-account";
 import { useTickers } from "@/features/market/hooks/use-market";
 import { estimatePaperRisk } from "./indicative-paper-risk";
 import { assessPaperPreflightReadiness } from "./paper-preflight-readiness";
 import { Input } from "@/components/ui/input";
 import { Panel } from "@/components/trading/panel";
 import { canSubmitManualPaperOrder } from "./manual-paper-order-activation";
+import { canShowHomologationPaperBuy } from "./homologation-paper-buy-gate";
 import { MIN_PAPER_BUY_NOTIONAL_USDT } from "../utils/paper-order-policy";
 import { examplePaperBuyFields } from "./paper-safe-example";
 
@@ -26,6 +29,21 @@ export function ManualPaperOrderPreview() {
   const [confirmation, setConfirmation] = useState("");
   const [strategyKey, setStrategyKey] = useState("ema");
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const queryClient = useQueryClient();
+  const pendingClientOrderId = useRef<string | null>(null);
+  const [approvedFingerprint, setApprovedFingerprint] = useState<string | null>(null);
+  const [approvedAt, setApprovedAt] = useState(0);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [submissionMessage, setSubmissionMessage] = useState<string | null>(null);
+  const homologationUi = canShowHomologationPaperBuy({
+    enabled: import.meta.env["VITE_PAPER_STAGING_UI_ENABLED"],
+    appId: import.meta.env["VITE_BULL_MARKET_APP_ID"],
+    projectRef: import.meta.env["VITE_SUPABASE_PROJECT_ID"],
+    backendUrl: import.meta.env["VITE_SUPABASE_URL"],
+    hostname: typeof window === "undefined" ? "" : window.location.hostname,
+  });
+  const fingerprint = JSON.stringify([symbol, quantity, stopPrice, strategyKey, confirmation]);
   useEffect(() => {
     const id = setInterval(() => setNowMs(Date.now()), 10_000);
     return () => clearInterval(id);
@@ -71,9 +89,17 @@ export function ManualPaperOrderPreview() {
     strategies: strategies.data,
   });
   const prepare = useServerFn(preparePaperBuy);
+  const submitStaging = useServerFn(submitControlledPaperBuy);
   const [preflight, setPreflight] = useState<string | null>(null);
   const [preparing, setPreparing] = useState(false);
-  useEffect(() => { setPreflight(null); }, [symbol, quantity, stopPrice, strategyKey, confirmation]);
+  useEffect(() => {
+    setPreflight(null);
+    setApprovedFingerprint(null);
+    setApprovedAt(0);
+    setSubmissionMessage(null);
+    setSubmitted(false);
+    pendingClientOrderId.current = null;
+  }, [symbol, quantity, stopPrice, strategyKey, confirmation]);
   const canPrepare = indicative.status === "within_limit" && readiness.status === "preflight_checkable" && /^[A-Z0-9]{2,20}$/.test(symbol) && /^[a-z_]{2,128}$/.test(strategyKey) &&
     quantity.trim().length > 0 && stopPrice.trim().length > 0 &&
     Number.isFinite(Number(quantity)) && Number(quantity) > 0 &&
@@ -85,13 +111,19 @@ export function ManualPaperOrderPreview() {
     setPreflight(null);
     try {
       const receipt = await prepare({ data: {
-        clientOrderId: `preflight-${crypto.randomUUID()}`,
+        clientOrderId: homologationUi
+          ? (pendingClientOrderId.current ??= `paper-${crypto.randomUUID()}`)
+          : `preflight-${crypto.randomUUID()}`,
         symbol, strategyKey, quantity: Number(quantity), stopPrice: Number(stopPrice),
       }, headers: { Authorization: `Bearer ${session.access_token}` } });
       if (receipt.status !== "prepared_only" || receipt.executed !== false) {
         throw new Error("Resposta de preparação inesperada");
       }
       setPreflight(`Preparação validada, sem execução: ${receipt.symbol}, quantidade ${fmtQuantity(receipt.quantity)}, cotação ${fmtUSDT(receipt.entryPrice, 4)} USDT, taxa ${fmtUSDT(receipt.fee, 10)} USDT, débito estimado ${fmtUSDT(receipt.totalDebit, 8)} USDT.`);
+      if (homologationUi) {
+        setApprovedFingerprint(fingerprint);
+        setApprovedAt(Date.now());
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : "";
       const safeReasons = [
@@ -109,6 +141,36 @@ export function ManualPaperOrderPreview() {
     } finally { setPreparing(false); }
   };
   const eligible = canSubmitManualPaperOrder({ symbol, quantity, stopPrice, confirmation, strategyKey });
+  const stagingNotional = Number(quantity) * (market?.lastPrice ?? NaN);
+  const stagingEligible = homologationUi && canPrepare && !preparing && !submitting && !submitted &&
+    approvedFingerprint === fingerprint && Date.now() - approvedAt < 25_000 &&
+    Number.isFinite(stagingNotional) && stagingNotional >= 5 && stagingNotional <= 10 &&
+    Boolean(pendingClientOrderId.current) && Boolean(session?.access_token);
+  const runStagingSubmit = async () => {
+    if (!stagingEligible || !pendingClientOrderId.current || !session?.access_token) return;
+    setSubmitting(true);
+    setSubmissionMessage(null);
+    try {
+      const receipt = await submitStaging({ data: {
+        clientOrderId: pendingClientOrderId.current,
+        symbol, strategyKey, quantity: Number(quantity), stopPrice: Number(stopPrice),
+        confirmation: "CONFIRMAR COMPRA SIMULADA",
+      }, headers: { Authorization: `Bearer ${session.access_token}` } });
+      if (receipt.status !== "executed" || receipt.executed !== true) {
+        throw new Error("Envio não autorizado");
+      }
+      setSubmitted(true);
+      setSubmissionMessage(`Compra simulada registrada na homologação. ID: ${receipt.orderId}.`);
+      await Promise.all([accountKeys.paper, accountKeys.positions, accountKeys.orders, accountKeys.audit]
+        .map((queryKey) => queryClient.invalidateQueries({ queryKey })));
+    } catch {
+      // Preserve the client-order ID so ambiguous failures cannot be retried
+      // under a NEW id and accidentally double-debit the paper account.
+      setSubmissionMessage("Envio não confirmado. Confira o histórico antes de tentar novamente. Nenhuma operação real foi autorizada.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <Panel title="Compra simulada — preparação">
@@ -196,6 +258,17 @@ export function ManualPaperOrderPreview() {
         {preparing ? "Verificando…" : "Validar compra sem executar"}
       </button>
       {preflight ? <p role="status" className="mt-2 text-sm">{preflight}</p> : null}
+      {homologationUi && (
+        <div className="mt-3 rounded-md border p-3 text-sm" role="region" aria-label="Compra simulada exclusiva da homologação">
+          <p className="font-semibold">Homologação — saldo 100% fictício</p>
+          <p className="mt-1 text-xs text-muted-foreground">Uma compra de 5 a 10 USDT por vez, até uma posição aberta, sem alavancagem, trading real ou saques. Execute a pré-verificação antes de enviar.</p>
+          <button type="button" onClick={() => void runStagingSubmit()} disabled={!stagingEligible}
+            className="mt-2 rounded-md border px-4 py-2 disabled:cursor-not-allowed disabled:opacity-50">
+            {submitting ? "Registrando compra fictícia…" : "Enviar compra simulada — homologação"}
+          </button>
+          {submissionMessage && <p role="status" className="mt-2">{submissionMessage}</p>}
+        </div>
+      )}
       <button type="button" disabled={!eligible} className="mt-3 rounded-md border px-4 py-2 text-sm opacity-50" aria-label="Envio de compra simulada desabilitado">
         Envio desabilitado
       </button>
