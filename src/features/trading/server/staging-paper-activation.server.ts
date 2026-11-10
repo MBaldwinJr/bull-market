@@ -5,6 +5,7 @@
  */
 export const HOMOLOGATION_APP_ID = "a37675cf-7419-49cd-87c3-74203b93f3e7";
 export const KNOWN_MAIN_SUPABASE_REF = "dsrjwmpvauipdssopydg";
+export const VERIFIED_HOMOLOGATION_SUPABASE_REF = "yawdfupednxlicfogwxp";
 
 export const STAGING_MAX_ORDER_NOTIONAL_USDT = 10;
 export const STAGING_MAX_INITIAL_BALANCE_USDT = 100;
@@ -41,9 +42,8 @@ export function isHomologationPaperBuyEnabled(env: Environment): boolean {
       env["PAPER_TRADING_EXECUTION_ENABLED"] !== "true") return false;
 
   const projectRef = env["PAPER_STAGING_APPROVED_PROJECT_REF"];
-  if (!projectRef || !/^[a-z0-9]{8,32}$/.test(projectRef) ||
-      projectRef === KNOWN_MAIN_SUPABASE_REF ||
-      env["VITE_SUPABASE_PROJECT_ID"] !== projectRef) return false;
+  if (projectRef !== VERIFIED_HOMOLOGATION_SUPABASE_REF ||
+      env["VITE_SUPABASE_PROJECT_ID"] !== VERIFIED_HOMOLOGATION_SUPABASE_REF) return false;
 
   const backend = cleanHttpsOrigin(env["SUPABASE_URL"]);
   const approved = cleanHttpsOrigin(env["PAPER_STAGING_APPROVED_SUPABASE_URL"]);
