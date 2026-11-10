@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { canShowHomologationPaperBuy } from "./homologation-paper-buy-gate";
 
 const appId = "a37675cf-7419-49cd-87c3-74203b93f3e7";
-const projectRef = "stagingreference12345";
+const projectRef = "yawdfupednxlicfogwxp";
 const approved = {
   enabled: "true",
   appId,
