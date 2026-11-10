@@ -28,7 +28,7 @@ def local_env():
         if "=" not in line or line.lstrip().startswith("#"):
             continue
         name, value = line.split("=", 1)
-        values[name.strip()] = value.strip().strip("'\\\"")
+        values[name.strip()] = value.strip().strip('"').strip("'")
     # Deliberately ignore any supplied server URL: the only network destination
     # this test will ever contact is the Docker Supabase stack on localhost.
     anon = values.get("ANON_KEY") or values.get("PUBLISHABLE_KEY")
