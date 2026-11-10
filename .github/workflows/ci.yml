@@ -19,10 +19,18 @@ jobs:
     name: Test, build and lint
     runs-on: ubuntu-latest
     env:
-      VITE_SUPABASE_URL: https://example.supabase.co
-      VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_placeholder
-      SUPABASE_URL: https://example.supabase.co
-      SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_placeholder
+      # CI ONLY: synthetic, unreachable database. Not a deployable credential.
+      BULL_MARKET_DEPLOY_TARGET: recovery-lab
+      VITE_BULL_MARKET_APP_ID: 9f4c5079-0871-47c3-92ef-aa1dd05738e5
+      RECOVERY_LAB_APPROVED_PROJECT_REF: zzzzzzzzzzzzzzzzzzzz
+      VITE_SUPABASE_PROJECT_ID: zzzzzzzzzzzzzzzzzzzz
+      VITE_SUPABASE_URL: https://zzzzzzzzzzzzzzzzzzzz.supabase.co
+      VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_only_not_a_real_key
+      SUPABASE_URL: https://zzzzzzzzzzzzzzzzzzzz.supabase.co
+      SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_only_not_a_real_key
+      PAPER_TRADING_ROUTE_ENABLED: "false"
+      PAPER_TRADING_EXECUTION_ENABLED: "false"
+      VITE_PAPER_STAGING_UI_ENABLED: "false"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -37,6 +45,26 @@ jobs:
 
       - name: Run tests
         run: bun run test
+
+      - name: Reject recovery build that points to homologation
+        run: |
+          set +e
+          RECOVERY_LAB_APPROVED_PROJECT_REF=yawdfupednxlicfogwxp \
+          VITE_SUPABASE_PROJECT_ID=yawdfupednxlicfogwxp \
+          VITE_SUPABASE_URL=https://yawdfupednxlicfogwxp.supabase.co \
+          SUPABASE_URL=https://yawdfupednxlicfogwxp.supabase.co \
+          bun run build > "$RUNNER_TEMP/recovery-denied.log" 2>&1
+          code=$?
+          set -e
+          if [ "$code" -eq 0 ]; then
+            echo "::error::Recovery Lab build unexpectedly accepted the homologation backend"
+            exit 1
+          fi
+          if ! grep -q 'Recovery Lab build denied: production/homologation backend is forbidden' "$RUNNER_TEMP/recovery-denied.log"; then
+            echo "::error::Recovery Lab failed for a reason other than backend isolation"
+            exit 1
+          fi
+          echo "PASS: production and homologation URLs cannot be used for a Recovery Lab build"
 
       - name: Build application
         run: bun run build
