@@ -64,6 +64,7 @@ def browser_test():
     blocked_hosts = set()
     local_auth_statuses = []
     app_console_error_count = [0]
+    js_responses = []
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True, args=["--no-sandbox"])
@@ -81,8 +82,12 @@ def browser_test():
         page.on("response", lambda response: local_auth_statuses.append(response.status) if
                 response.url.startswith(LOCAL_API + "/auth/v1/token") else None)
         page.on("pageerror", lambda _error: app_console_error_count.__setitem__(0, app_console_error_count[0] + 1))
+        page.on("response", lambda response: js_responses.append(response.status) if
+                response.url.startswith(APP + "/") and ("javascript" in response.headers.get("content-type", "") or response.url.split("?")[0].endswith(".js")) else None)
         PHASE = "opening_auth_page"
-        page.goto("/auth", wait_until="domcontentloaded", timeout=60000)
+        page.goto("/auth", wait_until="networkidle", timeout=60000)
+        # SSR markup is present before React hydration; never click it early.
+        page.wait_for_timeout(1000)
         page.locator("#email").fill(credentials["email"])
         page.locator("#password").fill(credentials["password"])
         PHASE = "submitting_auth_login"
@@ -98,7 +103,8 @@ def browser_test():
                        + ", dashboard_heading=" + str(page.get_by_text("Dashboard", exact=True).count())
                        + ", blocked_hostnames=" + str(sorted(blocked_hosts))
                        + ", local_auth_http_status=" + str(local_auth_statuses)
-                       + ", page_errors=" + str(app_console_error_count[0]))
+                       + ", page_errors=" + str(app_console_error_count[0])
+                       + ", js_responses=" + str(len(js_responses)))
             raise
         send = page.get_by_role("button", name="Envio desabilitado")
         expect(send).to_be_disabled()
