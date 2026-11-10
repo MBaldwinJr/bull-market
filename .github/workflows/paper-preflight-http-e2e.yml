@@ -21,7 +21,7 @@ permissions:
 jobs:
   browser-local-preflight:
     name: Real browser + server HTTP + local Supabase Auth
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 40
     env:
       PGHOST: 127.0.0.1
