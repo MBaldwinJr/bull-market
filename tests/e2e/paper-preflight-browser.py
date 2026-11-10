@@ -61,6 +61,9 @@ def browser_test():
     owner_id = credentials["user_id"]
     assert_unmodified(service_key, owner_id)
     post_urls = []
+    blocked_hosts = set()
+    local_auth_statuses = []
+    app_console_error_count = [0]
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True, args=["--no-sandbox"])
@@ -70,10 +73,14 @@ def browser_test():
         def block_external(route):
             url = urlsplit(route.request.url)
             if url.hostname not in ("127.0.0.1", "localhost"):
+                blocked_hosts.add(url.hostname or "unknown")
                 return route.abort()
             return route.continue_()
 
         context.route("**/*", block_external)
+        page.on("response", lambda response: local_auth_statuses.append(response.status) if
+                response.url.startswith(LOCAL_API + "/auth/v1/token") else None)
+        page.on("pageerror", lambda _error: app_console_error_count.__setitem__(0, app_console_error_count[0] + 1))
         PHASE = "opening_auth_page"
         page.goto("/auth", wait_until="domcontentloaded", timeout=60000)
         page.locator("#email").fill(credentials["email"])
@@ -86,7 +93,12 @@ def browser_test():
         try:
             expect(page.get_by_text("Compra simulada — preparação")).to_be_visible(timeout=45000)
         except Exception:
-            SAFE_UI = "current_route=" + urlsplit(page.url).path + ", login_visible=" + str(page.get_by_role("button", name="Entrar", exact=True).count()) + ", dashboard_heading=" + str(page.get_by_text("Dashboard", exact=True).count())
+            SAFE_UI = ("current_route=" + urlsplit(page.url).path
+                       + ", login_visible=" + str(page.get_by_role("button", name="Entrar", exact=True).count())
+                       + ", dashboard_heading=" + str(page.get_by_text("Dashboard", exact=True).count())
+                       + ", blocked_hostnames=" + str(sorted(blocked_hosts))
+                       + ", local_auth_http_status=" + str(local_auth_statuses)
+                       + ", page_errors=" + str(app_console_error_count[0]))
             raise
         send = page.get_by_role("button", name="Envio desabilitado")
         expect(send).to_be_disabled()
