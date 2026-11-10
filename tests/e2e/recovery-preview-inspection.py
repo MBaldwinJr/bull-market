@@ -29,6 +29,8 @@ def main():
     requested_refs = set()
     blocked_external = set()
     pages_ok = []
+    final_hosts = []
+    initial_statuses = []
     script_responses = 0
 
     with sync_playwright() as playwright:
@@ -83,9 +85,12 @@ def main():
                 response = page.goto(PREVIEW + path,
                                      wait_until="domcontentloaded",
                                      timeout=45_000)
+                if response:
+                    initial_statuses.append({"path": path, "status": response.status, "host": urlsplit(response.url).hostname})
                 if response and response.status == 200:
                     pages_ok.append(path)
                 page.wait_for_timeout(5_000)
+                final_hosts.append(urlsplit(page.url).hostname or "unknown")
             except Exception:
                 pass  # Report an incomplete remote inspection as a failure.
             finally:
@@ -99,6 +104,8 @@ def main():
     report = {
         "preview": PREVIEW,
         "http_pages_ok": pages_ok,
+        "initial_response_statuses": initial_statuses,
+        "final_browser_hosts": sorted(set(final_hosts)),
         "javascript_assets_checked": script_responses,
         "supabase_refs_in_compiled_assets": sorted(seen_refs),
         "supabase_refs_from_aborted_requests": sorted(requested_refs),
@@ -115,6 +122,7 @@ def main():
                 "### Recovery Lab preview — read-only check\n"
                 f"- Preview HTTP 200 paths: {', '.join(pages_ok) or 'none'}\n"
                 f"- JavaScript assets inspected: {script_responses}\n"
+                f"- Final navigation hosts: {', '.join(sorted(set(final_hosts))) or 'unknown'}\n"
                 f"- Supabase public refs observed: {', '.join(sorted(actual_refs)) or 'none'}\n"
                 f"- Forbidden production/staging refs: {', '.join(forbidden) or 'none observed'}\n"
                 "- External requests, including Supabase API calls, were blocked before sending.\n"
@@ -122,6 +130,8 @@ def main():
             )
     if forbidden:
         raise AssertionError("Recovery Lab preview exposes a forbidden production/homologation Supabase reference")
+    if "lovable.dev" in blocked_external or any(host != PREVIEW_HOST for host in final_hosts):
+        raise AssertionError("Preview requires external Lovable authentication or redirects outside the inspected origin")
     if not pages_ok or not script_responses or not actual_refs:
         raise AssertionError("Cannot verify effective preview origin; preview access or compiled JS is incomplete")
     if len(actual_refs) != 1:
