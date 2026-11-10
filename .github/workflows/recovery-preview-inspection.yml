@@ -1,0 +1,32 @@
+name: Recovery Lab Preview Origin - Read Only
+
+on:
+  push:
+    branches: [recovery-lab]
+    paths:
+      - '.github/workflows/recovery-preview-inspection.yml'
+      - 'tests/e2e/recovery-preview-inspection.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preview-origin:
+    name: Inspect hosted browser preview without API writes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      PAPER_TRADING_ROUTE_ENABLED: "false"
+      PAPER_TRADING_EXECUTION_ENABLED: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install isolated browser
+        run: |
+          python3 -m pip install 'playwright==1.57.0'
+          python3 -m playwright install --with-deps chromium
+      - name: Verify preview Supabase origins with all external fetches blocked
+        run: python3 tests/e2e/recovery-preview-inspection.py
