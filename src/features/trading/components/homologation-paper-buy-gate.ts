@@ -4,7 +4,7 @@
  * verifies staging identity and risk before any paper RPC.
  */
 const HOMOLOGATION_APP_ID = "a37675cf-7419-49cd-87c3-74203b93f3e7";
-const MAIN_PROJECT_REF = "dsrjwmpvauipdssopydg";
+const VERIFIED_HOMOLOGATION_REF = "yawdfupednxlicfogwxp";
 
 export interface HomologationPreviewConfig {
   readonly enabled: string | undefined;
@@ -16,8 +16,7 @@ export interface HomologationPreviewConfig {
 
 export function canShowHomologationPaperBuy(config: HomologationPreviewConfig): boolean {
   if (config.enabled !== "true" || config.appId !== HOMOLOGATION_APP_ID ||
-      !config.projectRef || config.projectRef === MAIN_PROJECT_REF ||
-      !/^[a-z0-9]{8,32}$/.test(config.projectRef)) return false;
+      config.projectRef !== VERIFIED_HOMOLOGATION_REF) return false;
   try {
     const backend = new URL(config.backendUrl ?? "");
     if (backend.protocol !== "https:" || backend.hostname !== `${config.projectRef}.supabase.co` ||
