@@ -15,7 +15,6 @@ import urllib.request
 from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
-from urllib.parse import urlsplit
 
 
 def require(condition, label):
@@ -29,21 +28,23 @@ def local_env():
         if "=" not in line or line.lstrip().startswith("#"):
             name, value = line.split("=", 1)
             values[name.strip()] = value.strip().strip("'\"")
-    url = values.get("API_URL", "").rstrip("/")
-    parsed = urlsplit(url)
-    require(parsed.scheme == "http"
-            and parsed.hostname in ("localhost", "127.0.0.1")
-            and parsed.port == 54321
-            and not parsed.username and not parsed.password
-            and parsed.path == "" and not parsed.query and not parsed.fragment,
-            "DENIED: non-local Supabase URL")
+    # Deliberately ignore any supplied server URL: the only network destination
+    # this test will ever contact is the Docker Supabase stack on localhost.
     anon = values.get("ANON_KEY") or values.get("PUBLISHABLE_KEY")
     service = values.get("SERVICE_ROLE_KEY") or values.get("SECRET_KEY")
     require(anon and service and anon != service, "Missing distinct local Supabase keys")
-    return url, anon, service
+    return "http://127.0.0.1:54321", anon, service
 
 
 BASE, ANON, SERVICE = local_env()
+
+
+class NoExternalRedirects(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        raise AssertionError("Local test refused an HTTP redirect")
+
+
+LOCAL_OPENER = urllib.request.build_opener(NoExternalRedirects())
 
 
 def request(method, path, key, payload=None, bearer=None, *, return_rows=False):
@@ -63,7 +64,7 @@ def request(method, path, key, payload=None, bearer=None, *, return_rows=False):
         body = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(BASE + path, headers=headers, data=body, method=method)
     try:
-        with urllib.request.urlopen(req, timeout=25) as response:
+        with LOCAL_OPENER.open(req, timeout=25) as response:
             raw = response.read()
             return response.status, json.loads(raw.decode()) if raw else None
     except urllib.error.HTTPError as exc:
