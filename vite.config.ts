@@ -9,14 +9,15 @@
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
+// HOMOLOGATION-ONLY CANDIDATE. NEVER MERGE THIS FILE INTO PRODUCTION MAIN.
 // `.env` is git-ignored in this repo, so the publish build cannot read it and the
 // site would ship without backend settings (blank screen). These are PUBLIC values
 // (backend URL + publishable key, protected by RLS) used only as a fallback when the
 // environment does not provide them. Never add private secrets here.
 const PUBLIC_BACKEND_ENV_FALLBACK = {
-  VITE_SUPABASE_URL: "https://dsrjwmpvauipdssopydg.supabase.co",
-  VITE_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_CH8ZIRdKyfxlzZiARI-xyg_QZGnRe_G",
-  VITE_SUPABASE_PROJECT_ID: "dsrjwmpvauipdssopydg",
+  VITE_SUPABASE_URL: "https://yawdfupednxlicfogwxp.supabase.co",
+  VITE_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_j-D9LJyA2mtxU4wAGPRZww_r5DemX0Q",
+  VITE_SUPABASE_PROJECT_ID: "yawdfupednxlicfogwxp",
 } as const;
 
 for (const [key, value] of Object.entries(PUBLIC_BACKEND_ENV_FALLBACK)) {
