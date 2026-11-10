@@ -1,0 +1,47 @@
+name: PostgreSQL Audit Candidate (Disposable)
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'db/lab-patches/0002_configuration_audit_candidate.sql'
+      - 'tests/postgres/run-config-audit-candidate-ci.sh'
+      - 'tests/postgres/config-audit-signup-*.sql'
+      - '.github/workflows/postgres-config-audit-candidate.yml'
+      - 'drizzle/migrations/0000_migration.sql'
+      - 'drizzle/migrations/0001_paper_account_integrity.sql'
+      - 'drizzle/migrations/0003_configuration_audit.sql'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  candidate-safety:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: bull_market_candidate_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: '5432'
+      PGDATABASE: bull_market_candidate_ci
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGSSLMODE: disable
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Run candidate idempotency, drift, RLS, signup audit and rollback checks
+        run: bash tests/postgres/run-config-audit-candidate-ci.sh
