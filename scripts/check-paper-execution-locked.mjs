@@ -42,6 +42,22 @@ assert.match(preview, /disabled=\{!eligible\}/,
 assert.doesNotMatch(preview, /executePaperBuyWithApproval|executePreparedPaperBuy|\.rpc\(/,
   "Preview component must never execute a trade");
 
+// A separately gated homologation-only BUY path may be present, but must
+// never weaken the existing disabled button or the two independent server switches.
+const stagingServer = read("src/features/trading/server/staging-paper-activation.server.ts");
+const stagingClient = read("src/features/trading/components/homologation-paper-buy-gate.ts");
+const submitServer = read("src/features/trading/services/paper-buy-submit.functions.ts");
+assert.match(stagingServer, /KNOWN_MAIN_SUPABASE_REF/, "Staging gate must reject the main database");
+assert.match(stagingServer, /PAPER_STAGING_APPROVED_SUPABASE_URL/, "Server must require exact approved DB URL");
+assert.match(stagingServer, /PAPER_TRADING_ROUTE_ENABLED/, "Server must require route switch");
+assert.match(stagingServer, /PAPER_TRADING_EXECUTION_ENABLED/, "Server must require execution switch");
+assert.match(stagingClient, /HOMOLOGATION_APP_ID/, "Only known staging preview may show the order button");
+assert.match(preview, /canShowHomologationPaperBuy\(/, "Staging control must be hidden by default");
+assert.match(submitServer, /if \(!isHomologationPaperBuyEnabled\(process\.env\)\)/,
+  "Server submission must fail closed before using admin credentials");
+assert.match(submitServer, /assertHomologationPaperOrder\(prepared, stageLimits\)/,
+  "Server submission must independently cap each paper purchase");
+
 for (const path of readdirSync(".github/workflows").filter((name) => /\.ya?ml$/.test(name))) {
   const body = read(".github/workflows/" + path);
   assert.doesNotMatch(body,
